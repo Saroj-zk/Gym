@@ -1,0 +1,15 @@
+# Node
+node_modules
+*.log
+dist
+build
+.env
+.next
+.cache
+.idea
+.DS_Store
+coverage
+.vscode
+*/.env
+apps/*/.env
+services/*/.env
