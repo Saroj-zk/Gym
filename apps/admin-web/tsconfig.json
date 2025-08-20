@@ -3,5 +3,5 @@
   "include": [
     "src",
     "vite.config.ts"
-  ]
+, "../member-app/src/pages/MemberHome.tsx"  ]
 }

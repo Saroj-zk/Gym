@@ -1,19 +1,34 @@
+// services/api/src/models/Payment.ts
 import mongoose, { Schema, InferSchemaType } from 'mongoose';
 
-const PaymentSchema = new Schema({
-  userId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
-  membershipId: { type: Schema.Types.ObjectId, ref: 'Membership' },
-  amount: Number,
-  currency: { type: String, default: 'INR' },
-  method: { type: String, enum: ['cash','card','upi','bank','online'], default: 'cash' },
-  gateway: { type: String, default: 'none' },
-  gatewayRef: String,
-  status: { type: String, enum: ['succeeded','pending','failed','refunded','partial'], default: 'succeeded' },
-  description: String,
-  receiptUrl: String,
-  paidAt: Date,
-  createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
-}, { timestamps: true });
+const SaleItemSchema = new Schema(
+  {
+    supplementId: { type: Schema.Types.ObjectId, ref: 'Supplement' },
+    name: String,
+    qty: Number,
+    price: Number, // unit price at time of sale
+  },
+  { _id: false }
+);
+
+const PaymentSchema = new Schema(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    amount: { type: Number, required: true },
+    method: { type: String, enum: ['cash', 'card', 'upi', 'bank'], default: 'upi' },
+    description: String,
+    status: { type: String, enum: ['paid', 'refunded', 'cancelled'], default: 'paid' },
+
+    // line items for supplement purchases
+    meta: {
+      items: [SaleItemSchema],
+    },
+  },
+  { timestamps: true }
+);
 
 export type Payment = InferSchemaType<typeof PaymentSchema>;
-export default mongoose.model('Payment', PaymentSchema);
+
+// IMPORTANT: reuse existing model in dev to avoid OverwriteModelError
+export default (mongoose.models.Payment as mongoose.Model<Payment>) ||
+  mongoose.model<Payment>('Payment', PaymentSchema);

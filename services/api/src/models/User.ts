@@ -23,6 +23,7 @@ const UserSchema = new Schema({
 
   status: { type: String, default: 'active' },   // 'active' | 'inactive' | ...
   role: { type: String, default: 'member' },     // 'member' | 'admin' | ...
+  passwordHash: { type: String, select: false }, // password login
 }, { timestamps: true });
 
 // IMPORTANT: no Express router code in model files.
