@@ -1,8 +1,6 @@
 import { Router } from 'express';
 import Payment from '../models/Payment';
 import { recordPaymentSchema } from '../utils/validators';
-import { Router } from 'express';
-import Payment from '../models/Payment';
 import User from '../models/User';
 
 const router = Router();
