@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import Attendance from '../models/Attendance';
-import User from '../models/User';
-import Membership from '../models/Membership';
-import { markAttendanceSchema } from '../utils/validators';
+import Attendance from '../models/Attendance.js';
+import User from '../models/User.js';
+import Membership from '../models/Membership.js';
+import { markAttendanceSchema } from '../utils/validators.js';
 
 const router = Router();
 

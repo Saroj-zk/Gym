@@ -1,10 +1,10 @@
 // services/api/src/routes/users.ts
 import { Router } from 'express';
-import { createUserSchema } from '../utils/validators';
-import User from '../models/User';
-import Membership from '../models/Membership';
-import Pack from '../models/Pack';
-import { sendSMS } from '../utils/sms';
+import { createUserSchema } from '../utils/validators.js';
+import User from '../models/User.js';
+import Membership from '../models/Membership.js';
+import Pack from '../models/Pack.js';
+import { sendSMS } from '../utils/sms.js';
 
 const router = Router();
 

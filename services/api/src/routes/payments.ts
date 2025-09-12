@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import Payment from '../models/Payment';
-import { recordPaymentSchema } from '../utils/validators';
-import User from '../models/User';
+import Payment from '../models/Payment.js';
+import { recordPaymentSchema } from '../utils/validators.js';
+import User from '../models/User.js';
 
 const router = Router();
 

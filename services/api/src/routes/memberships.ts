@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import Membership from '../models/Membership';
-import Pack from '../models/Pack';
-import { createMembershipSchema } from '../utils/validators';
+import Membership from '../models/Membership.js';
+import Pack from '../models/Pack.js';
+import { createMembershipSchema } from '../utils/validators.js';
 
 const router = Router();
 

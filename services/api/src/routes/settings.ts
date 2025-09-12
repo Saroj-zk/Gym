@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import Setting from '../models/Setting';
-import { requireRole } from '../utils/auth';
+import Setting from '../models/Setting.js';
+import { requireRole } from '../utils/auth.js';
 
 const router = Router();
 

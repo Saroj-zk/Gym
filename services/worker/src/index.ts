@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import 'dotenv/config.js';
 import { Queue, Worker } from 'bullmq';
 
 const connection =

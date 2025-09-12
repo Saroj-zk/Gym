@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import Supplement from '../models/Supplement';
+import Supplement from '../models/Supplement.js';
 
 const router = Router();
 

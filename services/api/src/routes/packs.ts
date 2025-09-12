@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import Pack from '../models/Pack';
-import { createPackSchema } from '../utils/validators';
+import Pack from '../models/Pack.js';
+import { createPackSchema } from '../utils/validators.js';
 
 const router = Router();
 

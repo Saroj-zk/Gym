@@ -5,45 +5,39 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 
-import { config } from './config';
-import { connectDB } from './db';
-import { errorHandler } from './middlewares/error';
-import { scheduleExpiryReminder } from './jobs/expiryReminder';
-import { seedAdmin } from './utils/seedAdmin';
+import config from './config.js';
+import { connectDB } from './db.js';
+import { errorHandler } from './middlewares/error.js';
+import { scheduleExpiryReminder } from './jobs/expiryReminder.js';
+import { seedAdmin } from './utils/seedAdmin.js';
 
-import users from './routes/users';
-import packs from './routes/packs';
-import memberships from './routes/memberships';
-import payments from './routes/payments';
-import attendance from './routes/attendance';
-import reports from './routes/reports';
-import workoutsRouter from './routes/workouts';
-import supplementsRouter from './routes/supplements';
-import authRoutes from './routes/auth';
-// add with the other imports
-import settingsRoutes from './routes/settings';
-
+import users from './routes/users.js';
+import packs from './routes/packs.js';
+import memberships from './routes/memberships.js';
+import payments from './routes/payments.js';
+import attendance from './routes/attendance.js';
+import reports from './routes/reports.js';
+import workoutsRouter from './routes/workouts.js';
+import supplementsRouter from './routes/supplements.js';
+import authRoutes from './routes/auth.js';
+import settingsRoutes from './routes/settings.js';
 
 async function bootstrap() {
-  await connectDB();
+  await connectDB(); // <- match the import name
   const app = express();
 
-  // If behind a proxy in prod (NGINX/Heroku), keep this:
-  // app.set('trust proxy', 1);
+  // app.set('trust proxy', 1); // keep if you run behind a proxy
 
   app.use(helmet());
 
-  // CORS must allow credentials for cookies to work from admin/member UIs
   app.use(
     cors({
-      origin: ['http://localhost:5173', 'http://localhost:5174'], // admin-web, member-app
+      origin: ['http://localhost:5173', 'http://localhost:5174'], // or config.corsOrigin
       credentials: true,
     })
   );
 
-  // Must be BEFORE routes so /auth/me can read the cookie
-  app.use(cookieParser());
-
+  app.use(cookieParser());                 // cookies before routes
   app.use(express.json({ limit: '1mb' }));
   app.use(morgan('dev'));
 
@@ -59,11 +53,9 @@ async function bootstrap() {
   app.use('/reports', reports);
   app.use('/workouts', workoutsRouter);
   app.use('/supplements', supplementsRouter);
-
   app.use('/settings', settingsRoutes);
 
-
-  // Error handler
+  // Error handler (must be after routes)
   app.use(errorHandler);
 
   // Jobs & seeding

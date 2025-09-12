@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import bcrypt from 'bcrypt';
-import User from '../models/User';
+import User from '../models/User.js';
 import {
   ADMIN_COOKIE,
   MEMBER_COOKIE,
@@ -10,7 +10,7 @@ import {
   readAuth,
   requireRole,
   type AuthedRequest,
-} from '../utils/auth';
+} from '../utils/auth.js';
 
 // Narrow type for lean user objects we read from Mongo
 type IUserLean = {

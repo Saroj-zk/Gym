@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { config } from '../config';
+import config from '../config.js'; // ESM: default import + .js
 
 export interface AuthRequest extends Request {
   user?: { id: string; role: string };
@@ -18,12 +18,23 @@ export function auth(required = true, roles: string[] = []) {
 
     try {
       const payload = jwt.verify(token, config.jwtSecret) as any;
-      req.user = { id: payload.id, role: payload.role };
-      if (roles.length && !roles.includes(req.user.role)) {
+
+      // Support tokens that use `sub` (common) or `id`
+      const id = payload?.sub ?? payload?.id;
+      const role = payload?.role;
+
+      if (!id || !role) {
+        return res.status(401).json({ error: 'Invalid token' });
+      }
+
+      req.user = { id, role };
+
+      if (roles.length && !roles.includes(role)) {
         return res.status(403).json({ error: 'Forbidden' });
       }
+
       next();
-    } catch (e) {
+    } catch {
       return res.status(401).json({ error: 'Invalid token' });
     }
   };

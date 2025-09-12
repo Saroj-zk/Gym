@@ -1,10 +1,10 @@
 // services/api/src/routes/reports.ts
 import { Router } from 'express';
-import Payment from '../models/Payment';
-import Attendance from '../models/Attendance';
-import Membership from '../models/Membership';
-import User from '../models/User';
-import Pack from '../models/Pack';
+import Payment from '../models/Payment.js';
+import Attendance from '../models/Attendance.js';
+import Membership from '../models/Membership.js';
+import User from '../models/User.js';
+import Pack from '../models/Pack.js';
 
 const router = Router();
 

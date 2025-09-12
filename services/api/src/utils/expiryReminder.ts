@@ -1,8 +1,8 @@
 import cron from 'node-cron'
-import Membership from '../models/Membership'
-import User from '../models/User'
-import Pack from '../models/Pack'
-import { sendSMS } from '../utils/sms'
+import Membership from '../models/Membership.js'
+import User from '../models/User.js'
+import Pack from '../models/Pack.js'
+import { sendSMS } from '../utils/sms.js'
 
 function dayRange(daysFromNow: number) {
   const start = new Date()
