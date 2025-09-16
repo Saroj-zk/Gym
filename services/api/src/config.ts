@@ -4,7 +4,7 @@ import 'dotenv/config.js';
 const mongoUri =
   process.env.MONGODB_URI ??
   process.env.MONGO_URI ??
-  'mongodb://127.0.0.1:27017/gymstack'; // local fallback for dev only
+  'mongodb://127.0.0.1:27017/gymstack';
 
 const config = {
   port: Number(process.env.PORT || 4000),

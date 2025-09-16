@@ -4,6 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
+import mongoose from 'mongoose';
 
 import config from './config.js';
 import { connectDB } from './db.js';
@@ -23,24 +24,54 @@ import authRoutes from './routes/auth.js';
 import settingsRoutes from './routes/settings.js';
 
 async function bootstrap() {
-  await connectDB(); // <- match the import name
+  await connectDB();
+
   const app = express();
 
-  // app.set('trust proxy', 1); // keep if you run behind a proxy
+  // running on Render behind a proxy → needed for SameSite=None cookies
+  app.set('trust proxy', 1);
 
   app.use(helmet());
-
   app.use(
     cors({
-      origin: ['http://localhost:5173', 'http://localhost:5174'], // or config.corsOrigin
+      // prefer env-driven origins; fallback to your local ports
+      origin: config.corsOrigin.length
+        ? config.corsOrigin
+        : ['http://localhost:5173', 'http://localhost:5174'],
       credentials: true,
+      methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+      allowedHeaders: ['Content-Type','Authorization'],
     })
   );
 
-  app.use(cookieParser());                 // cookies before routes
+  app.use(cookieParser());
   app.use(express.json({ limit: '1mb' }));
   app.use(morgan('dev'));
 
+  // quick startup log: which DB are we actually using?
+  try {
+    const u = new URL(config.mongoUri);
+    // e.g. gymcluster0.gygt4mi.mongodb.net /gymstack
+    console.log(`[DB] host=${u.host} db=${u.pathname.slice(1) || '(none)'} scheme=${u.protocol}`);
+  } catch {}
+
+  // health: proves DB connectivity + shows host/db
+  app.get('/healthz', async (_req, res) => {
+    try {
+      // works with mongoose connection
+      const ping = await mongoose.connection.db?.admin().command({ ping: 1 });
+      const u = new URL(config.mongoUri);
+      res.json({
+        ok: ping?.ok === 1,
+        host: u.host,
+        db: u.pathname.slice(1) || '(none)',
+      });
+    } catch (e: any) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // existing lightweight health
   app.get('/health', (_req, res) => res.json({ ok: true }));
 
   // Routes
