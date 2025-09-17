@@ -1,27 +1,38 @@
-import React, { useState } from 'react';
-import axios from 'axios';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { api } from "../lib/api"; // <-- use axios instance with baseURL
 
 export default function MemberLogin() {
   const nav = useNavigate();
-  const [userId, setUserId] = useState('');
-  const [mobileLast4, setMobileLast4] = useState('');
-  const [password, setPw] = useState('');
+  const [userId, setUserId] = useState("");
+  const [mobileLast4, setMobileLast4] = useState("");
+  const [password, setPw] = useState("");
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
+  const [err, setErr] = useState("");
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true); setErr('');
+    setBusy(true);
+    setErr("");
+
     try {
       const body: any = { userId: userId.trim() };
       if (password.trim()) body.password = password.trim();
       else body.mobileLast4 = mobileLast4.trim();
-      const res = await axios.post('/api/auth/member/login', body, { withCredentials: true });
+
+      // IMPORTANT: call your API base URL and correct route
+      const res = await api.post("/auth/member/login", body);
+
       const uid = res.data?.user?._id;
+      if (!uid) throw new Error("No user id in response");
       nav(`/me/${uid}`);
     } catch (e: any) {
-      setErr(e?.response?.data?.error || e.message || 'Login failed');
+      const msg =
+        e?.response?.data?.error ??
+        (typeof e?.response?.data === "string" ? e.response.data : "") ??
+        e.message ??
+        "Login failed";
+      setErr(msg);
     } finally {
       setBusy(false);
     }
@@ -53,7 +64,7 @@ export default function MemberLogin() {
         {err && <div className="mb-3 text-sm text-red-600">{err}</div>}
 
         <button disabled={busy || !canSubmit} className="w-full px-4 py-2 rounded-xl bg-black text-white disabled:opacity-50">
-          {busy ? 'Signing in…' : 'Sign in'}
+          {busy ? "Signing in…" : "Sign in"}
         </button>
 
         <div className="mt-4 text-center">

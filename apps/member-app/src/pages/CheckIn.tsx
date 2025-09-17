@@ -1,68 +1,76 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+// apps/member-app/src/pages/CheckIn.tsx
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { api } from "../lib/api"; // axios instance with baseURL + withCredentials
 
 export default function CheckIn() {
   const navigate = useNavigate();
 
-  const [code, setCode] = useState('');
-  const [mobile, setMobile] = useState('');
+  const [code, setCode] = useState("");
+  const [mobile, setMobile] = useState("");
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string>('');
+  const [err, setErr] = useState<string>("");
   const [remember, setRemember] = useState<boolean>(true);
 
   // If a member was remembered earlier, send them straight to their page
   useEffect(() => {
-    const savedCode = localStorage.getItem('memberUserCode');
+    const savedCode = localStorage.getItem("memberUserCode");
     if (savedCode) setCode(savedCode);
 
-    const savedId = localStorage.getItem('memberId');
+    const savedId = localStorage.getItem("memberId");
     if (savedId) navigate(`/me/${savedId}`);
   }, [navigate]);
 
   function onMobileChange(v: string) {
     // digits only, max length 4
-    const digits = v.replace(/\D/g, '').slice(0, 4);
+    const digits = v.replace(/\D/g, "").slice(0, 4);
     setMobile(digits);
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!code.trim()) { setErr('User ID is required'); return; }
-    if (mobile.length !== 4) { setErr('Enter last 4 digits of your mobile'); return; }
+    if (!code.trim()) {
+      setErr("User ID is required");
+      return;
+    }
+    if (mobile.length !== 4) {
+      setErr("Enter last 4 digits of your mobile");
+      return;
+    }
 
-    setBusy(true); setErr('');
+    setBusy(true);
+    setErr("");
 
     try {
-      const res = await fetch('/api/attendance/mark-by-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userCode: code.trim(),
-          mobile: mobile.trim(),     // server accepts full or last-4; we send last-4
-          method: 'manual',
-        }),
-        credentials: 'include',
+      // CALL YOUR API (no /api prefix; axios baseURL = VITE_API_URL)
+      const { data } = await api.post("/attendance/mark-by-code", {
+        userCode: code.trim(),
+        mobile: mobile.trim(), // server accepts last-4
+        method: "manual",
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Failed to check in');
+      if (!data || !data.user) throw new Error(data?.error || "Failed to check in");
 
-      const user = data?.user;
-      const mongoId = user?._id || user?.id;
-      if (!mongoId) throw new Error('User ID not returned by server');
+      const user = data.user;
+      const mongoId = user._id || user.id;
+      if (!mongoId) throw new Error("User ID not returned by server");
 
       if (remember) {
-        localStorage.setItem('memberUserCode', code.trim());
-        localStorage.setItem('memberId', String(mongoId));
+        localStorage.setItem("memberUserCode", code.trim());
+        localStorage.setItem("memberId", String(mongoId));
       } else {
-        localStorage.removeItem('memberUserCode');
-        localStorage.removeItem('memberId');
+        localStorage.removeItem("memberUserCode");
+        localStorage.removeItem("memberId");
       }
 
-      // 🚀 Go to member home (workouts + supplements)
-      navigate(`/me/${mongoId}`);
+      navigate(`/me/${mongoId}`); // go to member home
     } catch (e: any) {
-      setErr(e.message || 'Failed to check in');
+      const msg =
+        e?.response?.data?.error ??
+        (typeof e?.response?.data === "string" ? e.response.data : "") ??
+        e?.message ??
+        "Failed to check in";
+      setErr(msg);
     } finally {
       setBusy(false);
     }
@@ -95,7 +103,7 @@ export default function CheckIn() {
               className="w-full rounded-xl border px-3 py-3"
               placeholder="e.g., 1234"
               inputMode="numeric"
-              pattern="\d{4}"
+              pattern="\\d{4}"
               maxLength={4}
             />
             <div className="mt-2 flex items-center gap-2">
@@ -118,7 +126,7 @@ export default function CheckIn() {
             disabled={!canSubmit}
             className="w-full px-4 py-3 rounded-xl bg-black text-white disabled:opacity-50"
           >
-            {busy ? 'Checking in…' : 'Check In'}
+            {busy ? "Checking in…" : "Check In"}
           </button>
         </form>
       </div>
