@@ -28,18 +28,30 @@ async function bootstrap() {
 
   const app = express();
 
-  // Running on Render behind a proxy → needed for SameSite=None cookies
+  // Render/Proxies: required for SameSite=None cookies
   app.set('trust proxy', 1);
 
-  /** -------------------- C O R S (must be first) -------------------- **/
-  // Build allow-list from env (comma-separated in CORS_ORIGIN)
-  const ALLOWED_LIST = (config.corsOrigin as string[])
+  /** -------------------- C O R S  (must be first) -------------------- **/
+  const DEFAULT_ALLOWED = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'https://gym-member-app.vercel.app',
+    'https://gym-admin-web-brown.vercel.app',
+  ];
+
+  // Build allow-list from env (CORS_ORIGIN comma-separated) or defaults
+  const raw = (process.env.CORS_ORIGIN && process.env.CORS_ORIGIN.length
+    ? process.env.CORS_ORIGIN.split(',')
+    : DEFAULT_ALLOWED
+  );
+
+  const ALLOWED_LIST = raw
     .map(s => s.trim())
     .filter(Boolean)
-    .map(s => s.replace(/^['"]|['"]$/g, '')) // strip accidental surrounding quotes
-    .map(s => s.replace(/\/$/, ''));         // drop trailing slash
+    .map(s => s.replace(/^['"]|['"]$/g, '')) // strip accidental quotes
+    .map(s => s.replace(/\/$/, ''));         // remove trailing slash
 
-  // Helper to match origins by host (more forgiving)
+  // Match by host for robustness
   function isAllowed(origin?: string | null): boolean {
     if (!origin) return true; // allow server-to-server / curl (no Origin header)
     try {
@@ -69,23 +81,19 @@ async function bootstrap() {
   app.options('*', cors(corsOpts)); // ensure preflight works everywhere
 
   /** -------------------- Security / parsers -------------------- **/
-  app.use(
-    helmet({
-      // don’t block cross-origin XHR/resources
-      crossOriginResourcePolicy: false,
-      crossOriginEmbedderPolicy: false,
-    })
-  );
+  app.use(helmet({
+    // allow cross-origin XHR/resources
+    crossOriginResourcePolicy: false,
+    crossOriginEmbedderPolicy: false,
+  }));
   app.use(cookieParser());
   app.use(express.json({ limit: '1mb' }));
   app.use(morgan('dev'));
 
-  // Quick startup log
+  // Startup log
   try {
     const u = new URL(config.mongoUri);
-    console.log(
-      `[DB] host=${u.host} db=${u.pathname.slice(1) || '(none)'} scheme=${u.protocol}`
-    );
+    console.log(`[DB] host=${u.host} db=${u.pathname.slice(1) || '(none)'} scheme=${u.protocol}`);
     console.log('[CORS] allowed:', ALLOWED_LIST.join(', '));
   } catch {}
 
@@ -94,11 +102,7 @@ async function bootstrap() {
     try {
       const ping = await mongoose.connection.db?.admin().command({ ping: 1 });
       const u = new URL(config.mongoUri);
-      res.json({
-        ok: ping?.ok === 1,
-        host: u.host,
-        db: u.pathname.slice(1) || '(none)',
-      });
+      res.json({ ok: ping?.ok === 1, host: u.host, db: u.pathname.slice(1) || '(none)' });
     } catch (e: any) {
       res.status(500).json({ ok: false, error: e.message });
     }
