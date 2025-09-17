@@ -1,34 +1,46 @@
 import React, { useState } from 'react';
-import axios from 'axios';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { api } from '../lib/api';
 
-// This page lives inside admin-web, so we can just navigate locally after login.
 export default function AdminLogin() {
   const nav = useNavigate();
   const [emailOrUserId, setId] = useState('');
   const [password, setPw] = useState('');
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
+  const [err, setErr] = useState<string>('');
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true); setErr('');
+    setBusy(true);
+    setErr('');
+
     try {
-      const body: any = { password };
-      if (emailOrUserId.includes('@')) body.email = emailOrUserId.trim();
-      else body.userId = emailOrUserId.trim();
+      const body: Record<string, string> = { password: password.trim() };
+      const id = emailOrUserId.trim();
+      if (id.includes('@')) body.email = id;
+      else body.userId = id;
 
-      // ✅ use the admin-specific endpoint
-      await axios.post('/api/auth/admin/login', body, { withCredentials: true });
+      // Hit the Render API (via axios client with baseURL)
+      const { data } = await api.post('/auth/admin/login', body);
+      if (!data?.ok) throw new Error(data?.error || 'Login failed');
 
-      // ✅ single redirect: go to admin dashboard home
-      nav('/');
+      // Optionally confirm cookie
+      await api.get('/auth/admin/me').catch(() => {});
+
+      nav('/'); // go to admin dashboard
     } catch (e: any) {
-      setErr(e?.response?.data?.error || e.message || 'Login failed');
+      const msg =
+        e?.response?.data?.error ??
+        (typeof e?.response?.data === 'string' ? e.response.data : '') ??
+        e?.message ??
+        'Login failed';
+      setErr(String(msg));
     } finally {
       setBusy(false);
     }
   }
+
+  const canSubmit = emailOrUserId.trim().length > 0 && password.trim().length > 0 && !busy;
 
   return (
     <div className="min-h-screen bg-gray-50 grid place-items-center p-6">
@@ -39,7 +51,7 @@ export default function AdminLogin() {
         <label className="block text-sm text-gray-600 mb-1">Email or Admin User ID</label>
         <input
           value={emailOrUserId}
-          onChange={e=>setId(e.target.value)}
+          onChange={(e) => setId(e.target.value)}
           className="w-full rounded-xl border px-3 py-2 mb-3"
           autoFocus
         />
@@ -48,18 +60,24 @@ export default function AdminLogin() {
         <input
           type="password"
           value={password}
-          onChange={e=>setPw(e.target.value)}
+          onChange={(e) => setPw(e.target.value)}
           className="w-full rounded-xl border px-3 py-2 mb-4"
         />
 
         {err && <div className="mb-3 text-sm text-red-600">{err}</div>}
 
-        <button disabled={busy} className="w-full px-4 py-2 rounded-xl bg-black text-white">
+        <button
+          type="submit"
+          disabled={!canSubmit}
+          className="w-full px-4 py-2 rounded-xl bg-black text-white disabled:opacity-50"
+        >
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
 
         <div className="mt-4 text-center">
-          <Link to="/kiosk" className="text-sm text-gray-600 underline">Back to Kiosk</Link>
+          <Link to="/kiosk" className="text-sm text-gray-600 underline">
+            Back to Kiosk
+          </Link>
         </div>
       </form>
     </div>
