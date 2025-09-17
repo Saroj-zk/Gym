@@ -103,7 +103,7 @@ export default function CheckIn() {
               className="w-full rounded-xl border px-3 py-3"
               placeholder="e.g., 1234"
               inputMode="numeric"
-              pattern="\\d{4}"
+              pattern="[0-9]{4}"
               maxLength={4}
             />
             <div className="mt-2 flex items-center gap-2">

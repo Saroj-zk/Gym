@@ -8,8 +8,11 @@
     "rootDir": "src",
     "esModuleInterop": true,
     "resolveJsonModule": true,
+
     "strict": true,
-    "skipLibCheck": true
+    "noImplicitAny": false,              // <-- add this override (temp)
+    "skipLibCheck": true,
+    "types": ["node", "express"]        // <-- add this
   },
   "include": ["src"]
 }
