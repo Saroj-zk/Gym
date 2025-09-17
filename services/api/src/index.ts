@@ -31,19 +31,40 @@ async function bootstrap() {
   // running on Render behind a proxy → needed for SameSite=None cookies
   app.set('trust proxy', 1);
 
-  app.use(helmet());
-  app.use(
-    cors({
-      // prefer env-driven origins; fallback to your local ports
-      origin: config.corsOrigin.length
-        ? config.corsOrigin
-        : ['http://localhost:5173', 'http://localhost:5174'],
-      credentials: true,
-      methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-      allowedHeaders: ['Content-Type','Authorization'],
-    })
-  );
+  /** -------------------- C O R S  (must be first) -------------------- **/
+  // Build allowlist: from env (comma-separated) or local fallbacks
+  const ALLOWED_ORIGINS = (
+    (config.corsOrigin?.length ? config.corsOrigin : [
+      'http://localhost:5173',
+      'http://localhost:5174',
+    ]) as string[]
+  )
+    .map(s => s.trim())
+    .filter(Boolean);
 
+  // Preflight + actual requests
+  const corsOpts: cors.CorsOptions = {
+    origin: (origin, cb) => {
+      // allow server-to-server / curl (no Origin header)
+      if (!origin) return cb(null, true);
+      const ok = ALLOWED_ORIGINS.includes(origin);
+      if (!ok) console.warn('[CORS] blocked origin:', origin);
+      cb(null, ok);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  };
+
+  app.use(cors(corsOpts));
+  app.options('*', cors(corsOpts)); // ensure preflight works everywhere
+
+  /** -------------------- Security / parsers -------------------- **/
+  app.use(helmet({
+    // don’t block cross-origin XHR/resources
+    crossOriginResourcePolicy: false,
+    crossOriginEmbedderPolicy: false,
+  }));
   app.use(cookieParser());
   app.use(express.json({ limit: '1mb' }));
   app.use(morgan('dev'));
@@ -51,14 +72,15 @@ async function bootstrap() {
   // quick startup log: which DB are we actually using?
   try {
     const u = new URL(config.mongoUri);
-    // e.g. gymcluster0.gygt4mi.mongodb.net /gymstack
-    console.log(`[DB] host=${u.host} db=${u.pathname.slice(1) || '(none)'} scheme=${u.protocol}`);
+    console.log(
+      `[DB] host=${u.host} db=${u.pathname.slice(1) || '(none)'} scheme=${u.protocol}`
+    );
+    console.log('[CORS] allowed:', ALLOWED_ORIGINS.join(', '));
   } catch {}
 
-  // health: proves DB connectivity + shows host/db
+  /** -------------------- Health -------------------- **/
   app.get('/healthz', async (_req, res) => {
     try {
-      // works with mongoose connection
       const ping = await mongoose.connection.db?.admin().command({ ping: 1 });
       const u = new URL(config.mongoUri);
       res.json({
@@ -71,10 +93,9 @@ async function bootstrap() {
     }
   });
 
-  // existing lightweight health
   app.get('/health', (_req, res) => res.json({ ok: true }));
 
-  // Routes
+  /** -------------------- Routes -------------------- **/
   app.use('/auth', authRoutes);
   app.use('/users', users);
   app.use('/packs', packs);
