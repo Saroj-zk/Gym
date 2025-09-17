@@ -1,6 +1,6 @@
 // services/api/src/index.ts
 import express from 'express';
-import cors from 'cors';
+import cors, { type CorsOptions } from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
@@ -28,27 +28,36 @@ async function bootstrap() {
 
   const app = express();
 
-  // running on Render behind a proxy → needed for SameSite=None cookies
+  // Running on Render behind a proxy → needed for SameSite=None cookies
   app.set('trust proxy', 1);
 
-  /** -------------------- C O R S  (must be first) -------------------- **/
-  // Build allowlist: from env (comma-separated) or local fallbacks
-  const ALLOWED_ORIGINS = (
-    (config.corsOrigin?.length ? config.corsOrigin : [
-      'http://localhost:5173',
-      'http://localhost:5174',
-    ]) as string[]
-  )
+  /** -------------------- C O R S (must be first) -------------------- **/
+  // Build allow-list from env (comma-separated in CORS_ORIGIN)
+  const ALLOWED_LIST = (config.corsOrigin as string[])
     .map(s => s.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .map(s => s.replace(/^['"]|['"]$/g, '')) // strip accidental surrounding quotes
+    .map(s => s.replace(/\/$/, ''));         // drop trailing slash
 
-  // Preflight + actual requests
-  const corsOpts: cors.CorsOptions = {
+  // Helper to match origins by host (more forgiving)
+  function isAllowed(origin?: string | null): boolean {
+    if (!origin) return true; // allow server-to-server / curl (no Origin header)
+    try {
+      const oHost = new URL(origin).host;
+      return ALLOWED_LIST.some(a => {
+        const aUrl = a.startsWith('http') ? a : `https://${a}`;
+        const aHost = new URL(aUrl).host;
+        return aHost === oHost || a === origin;
+      });
+    } catch {
+      return false;
+    }
+  }
+
+  const corsOpts: CorsOptions = {
     origin: (origin, cb) => {
-      // allow server-to-server / curl (no Origin header)
-      if (!origin) return cb(null, true);
-      const ok = ALLOWED_ORIGINS.includes(origin);
-      if (!ok) console.warn('[CORS] blocked origin:', origin);
+      const ok = isAllowed(origin);
+      if (!ok) console.warn('[CORS] blocked origin:', origin, 'allowed=', ALLOWED_LIST);
       cb(null, ok);
     },
     credentials: true,
@@ -60,22 +69,24 @@ async function bootstrap() {
   app.options('*', cors(corsOpts)); // ensure preflight works everywhere
 
   /** -------------------- Security / parsers -------------------- **/
-  app.use(helmet({
-    // don’t block cross-origin XHR/resources
-    crossOriginResourcePolicy: false,
-    crossOriginEmbedderPolicy: false,
-  }));
+  app.use(
+    helmet({
+      // don’t block cross-origin XHR/resources
+      crossOriginResourcePolicy: false,
+      crossOriginEmbedderPolicy: false,
+    })
+  );
   app.use(cookieParser());
   app.use(express.json({ limit: '1mb' }));
   app.use(morgan('dev'));
 
-  // quick startup log: which DB are we actually using?
+  // Quick startup log
   try {
     const u = new URL(config.mongoUri);
     console.log(
       `[DB] host=${u.host} db=${u.pathname.slice(1) || '(none)'} scheme=${u.protocol}`
     );
-    console.log('[CORS] allowed:', ALLOWED_ORIGINS.join(', '));
+    console.log('[CORS] allowed:', ALLOWED_LIST.join(', '));
   } catch {}
 
   /** -------------------- Health -------------------- **/
