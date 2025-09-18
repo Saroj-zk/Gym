@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import { api } from '../lib/api';
 
 type LBRow = {
   user?: { _id: string; userId: string; firstName?: string; lastName?: string };
@@ -18,10 +18,16 @@ export default function LeaderboardPage() {
     (async () => {
       try {
         setLoading(true);
-        const res = await axios.get('/api/reports/leaderboard', { params: { days, limit: 10 } });
-        setRows(res.data?.items || []);
+        setError('');
+        const { data } = await api.get('/reports/leaderboard', { params: { days, limit: 10 } });
+        setRows(data?.items || []);
       } catch (e: any) {
-        setError(e?.response?.data?.error || e.message || 'Failed to load leaderboard');
+        const msg =
+          e?.response?.data?.error ??
+          (typeof e?.response?.data === 'string' ? e.response.data : '') ??
+          e?.message ??
+          'Failed to load leaderboard';
+        setError(String(msg));
       } finally {
         setLoading(false);
       }
@@ -37,7 +43,7 @@ export default function LeaderboardPage() {
           <input
             type="number"
             value={days}
-            onChange={e => setDays(Math.max(1, Number(e.target.value || 30)))}
+            onChange={(e) => setDays(Math.max(1, Number(e.target.value || 30)))}
             className="w-20 rounded-xl border px-3 py-2 text-sm"
           />
         </div>
@@ -65,8 +71,7 @@ export default function LeaderboardPage() {
             </thead>
             <tbody>
               {rows.map((r, i) => {
-                const name =
-                  [r.user?.firstName, r.user?.lastName].filter(Boolean).join(' ') || '—';
+                const name = [r.user?.firstName, r.user?.lastName].filter(Boolean).join(' ') || '—';
                 return (
                   <tr key={r.user?._id || i} className="border-t">
                     <td className="px-4 py-3">{i + 1}</td>

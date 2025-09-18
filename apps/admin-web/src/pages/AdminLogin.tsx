@@ -11,23 +11,25 @@ export default function AdminLogin() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (busy) return;
+
     setBusy(true);
     setErr('');
 
     try {
-      const body: Record<string, string> = { password: password.trim() };
       const id = emailOrUserId.trim();
+      const body: Record<string, string> = { password: password.trim() };
       if (id.includes('@')) body.email = id;
       else body.userId = id;
 
-      // Hit the Render API (via axios client with baseURL)
+      // Hit Render API (no /api prefix). Cookies allowed via withCredentials in api client.
       const { data } = await api.post('/auth/admin/login', body);
       if (!data?.ok) throw new Error(data?.error || 'Login failed');
 
-      // Optionally confirm cookie
+      // Optional: verify cookie round-trip
       await api.get('/auth/admin/me').catch(() => {});
 
-      nav('/'); // go to admin dashboard
+      nav('/'); // dashboard home
     } catch (e: any) {
       const msg =
         e?.response?.data?.error ??
@@ -40,7 +42,10 @@ export default function AdminLogin() {
     }
   }
 
-  const canSubmit = emailOrUserId.trim().length > 0 && password.trim().length > 0 && !busy;
+  const canSubmit =
+    emailOrUserId.trim().length > 0 &&
+    password.trim().length > 0 &&
+    !busy;
 
   return (
     <div className="min-h-screen bg-gray-50 grid place-items-center p-6">
@@ -54,6 +59,7 @@ export default function AdminLogin() {
           onChange={(e) => setId(e.target.value)}
           className="w-full rounded-xl border px-3 py-2 mb-3"
           autoFocus
+          autoComplete="username"
         />
 
         <label className="block text-sm text-gray-600 mb-1">Password</label>
@@ -62,6 +68,7 @@ export default function AdminLogin() {
           value={password}
           onChange={(e) => setPw(e.target.value)}
           className="w-full rounded-xl border px-3 py-2 mb-4"
+          autoComplete="current-password"
         />
 
         {err && <div className="mb-3 text-sm text-red-600">{err}</div>}

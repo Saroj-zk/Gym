@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
 import KpiCard from '../components/KpiCard';
+import { api } from '../lib/api';
 
 type SignupUser = {
   _id: string;
@@ -23,8 +23,6 @@ type RenewalsRes = { days: number; count: number; items: RenewalItem[] };
 
 export default function Dashboard() {
   const [kpis, setKpis] = useState<any>(null);
-
-  // NEW
   const [signups, setSignups] = useState<NewSignupsRes | null>(null);
   const [renewals, setRenewals] = useState<RenewalsRes | null>(null);
   const [err, setErr] = useState('');
@@ -35,18 +33,22 @@ export default function Dashboard() {
         setErr('');
 
         const [rev, peaks, su, rn] = await Promise.all([
-          axios.get('/api/reports/revenue/summary', { params: { days: 7 } }),
-          axios.get('/api/reports/attendance/peaks'),
-          axios.get('/api/reports/new-signups', { params: { days: 7, limit: 5 } }),
-          axios.get('/api/reports/upcoming-renewals', { params: { days: 7, limit: 8 } }),
+          api.get('/reports/revenue/summary', { params: { days: 7 } }),
+          api.get('/reports/attendance/peaks'),
+          api.get('/reports/new-signups', { params: { days: 7, limit: 5 } }),
+          api.get('/reports/upcoming-renewals', { params: { days: 7, limit: 8 } }),
         ]);
 
         setKpis({ rev: rev.data, peaks: peaks.data });
         setSignups(su.data);
         setRenewals(rn.data);
       } catch (e: any) {
-        console.error(e);
-        setErr(e?.response?.data?.error || e.message || 'Failed to load dashboard');
+        const msg =
+          e?.response?.data?.error ??
+          (typeof e?.response?.data === 'string' ? e.response.data : '') ??
+          e?.message ??
+          'Failed to load dashboard';
+        setErr(String(msg));
       }
     }
     load();

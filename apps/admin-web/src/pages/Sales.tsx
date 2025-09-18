@@ -1,16 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import { api } from '../lib/api';
 
 type Pay = {
   _id: string;
   amount: number;
-  method?: 'cash'|'card'|'upi'|'bank';
+  method?: 'cash' | 'card' | 'upi' | 'bank';
   description?: string;
   createdAt?: string;
-  status?: 'paid'|'refunded'|'cancelled'|string;
+  status?: 'paid' | 'refunded' | 'cancelled' | string;
   userId?: { _id: string; userId: string; firstName?: string; lastName?: string };
-  // NEW: line items stored in meta.items
+  // line items stored in meta.items
   meta?: { items?: { name: string; qty: number; price: number }[] };
 };
 
@@ -23,52 +23,78 @@ export default function Sales() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
 
-  const total = useMemo(() => rows.reduce((s,r)=>s+(Number(r.amount)||0), 0), [rows]);
+  const total = useMemo(() => rows.reduce((s, r) => s + (Number(r.amount) || 0), 0), [rows]);
 
   async function load() {
     try {
-      setLoading(true); setError('');
+      setLoading(true);
+      setError('');
       const params: any = {};
       if (q) params.q = q;
       if (method) params.method = method;
       if (from) params.from = from;
       if (to) params.to = to;
 
-      const res = await axios.get('/api/payments/sales', { params });
-      setRows(res.data || []);
-    } catch (e:any) {
-      setError(e?.response?.data?.error || e.message || 'Failed to load sales');
+      const { data } = await api.get('/payments/sales', { params });
+      setRows(Array.isArray(data) ? data : []);
+    } catch (e: any) {
+      const msg =
+        e?.response?.data?.error ??
+        (typeof e?.response?.data === 'string' ? e.response.data : '') ??
+        e?.message ??
+        'Failed to load sales';
+      setError(String(msg));
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(()=>{ load() }, []);
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function exportCSV() {
-    try{
+    try {
       const params: any = {};
       if (q) params.q = q;
       if (method) params.method = method;
       if (from) params.from = from;
       if (to) params.to = to;
-      const res = await axios.get('/api/payments/sales/export/csv', { params, responseType:'blob' });
-      const url = URL.createObjectURL(new Blob([res.data], { type:'text/csv;charset=utf-8;' }));
+
+      const res = await api.get('/payments/sales/export/csv', {
+        params,
+        responseType: 'blob',
+      });
+
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'text/csv;charset=utf-8;' }));
       const a = document.createElement('a');
-      a.href = url; a.download = `supplement_sales_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+      a.href = url;
+      a.download = `supplement_sales_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
       URL.revokeObjectURL(url);
-    }catch(e:any){
-      alert(e?.response?.data?.error || e.message || 'Export failed');
+    } catch (e: any) {
+      const msg =
+        e?.response?.data?.error ??
+        (typeof e?.response?.data === 'string' ? e.response.data : '') ??
+        e?.message ??
+        'Export failed';
+      alert(msg);
     }
   }
 
-  async function markStatus(id: string, status: 'refunded'|'cancelled') {
+  async function markStatus(id: string, status: 'refunded' | 'cancelled') {
     if (!confirm(`Mark as ${status}?`)) return;
-    try{
-      await axios.patch(`/api/payments/${id}/status`, { status });
+    try {
+      await api.patch(`/payments/${id}/status`, { status });
       await load();
-    }catch(e:any){
-      alert(e?.response?.data?.error || e.message || 'Update failed');
+    } catch (e: any) {
+      const msg =
+        e?.response?.data?.error ??
+        (typeof e?.response?.data === 'string' ? e.response.data : '') ??
+        e?.message ??
+        'Update failed';
+      alert(msg);
     }
   }
 
@@ -76,7 +102,7 @@ export default function Sales() {
     if (s === 'refunded') return 'bg-red-100 text-red-700';
     if (s === 'cancelled') return 'bg-yellow-100 text-yellow-800';
     return 'bg-green-100 text-green-700'; // paid/default
-    }
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -91,20 +117,44 @@ export default function Sales() {
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-3">
         <input
-          value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') load() }}
-          placeholder="Search description or member…" className="rounded-xl border px-3 py-2" style={{minWidth:280}}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') load();
+          }}
+          placeholder="Search description or member…"
+          className="rounded-xl border px-3 py-2"
+          style={{ minWidth: 280 }}
         />
-        <select value={method} onChange={e=>setMethod(e.target.value)} className="rounded-xl border px-3 py-2">
+        <select
+          value={method}
+          onChange={(e) => setMethod(e.target.value)}
+          className="rounded-xl border px-3 py-2"
+        >
           <option value="">All methods</option>
           <option value="upi">UPI</option>
           <option value="cash">Cash</option>
           <option value="card">Card</option>
           <option value="bank">Bank Transfer</option>
         </select>
-        <input type="date" value={from} onChange={e=>setFrom(e.target.value)} className="rounded-xl border px-3 py-2" />
-        <input type="date" value={to} onChange={e=>setTo(e.target.value)} className="rounded-xl border px-3 py-2" />
-        <button onClick={load} className="px-3 py-2 rounded-xl border">Apply</button>
-        <button onClick={exportCSV} className="px-3 py-2 rounded-xl border">Export CSV</button>
+        <input
+          type="date"
+          value={from}
+          onChange={(e) => setFrom(e.target.value)}
+          className="rounded-xl border px-3 py-2"
+        />
+        <input
+          type="date"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          className="rounded-xl border px-3 py-2"
+        />
+        <button onClick={load} className="px-3 py-2 rounded-xl border">
+          Apply
+        </button>
+        <button onClick={exportCSV} className="px-3 py-2 rounded-xl border">
+          Export CSV
+        </button>
       </div>
 
       {error && <div className="p-3 rounded-2xl bg-red-50 text-red-700 text-sm">{error}</div>}
@@ -112,7 +162,9 @@ export default function Sales() {
       {loading ? (
         <div className="text-gray-500">Loading…</div>
       ) : rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed p-10 text-center text-gray-500">No orders found.</div>
+        <div className="rounded-2xl border border-dashed p-10 text-center text-gray-500">
+          No orders found.
+        </div>
       ) : (
         <div className="overflow-x-auto rounded-2xl bg-white shadow">
           <table className="min-w-full text-sm">
@@ -129,16 +181,24 @@ export default function Sales() {
               </tr>
             </thead>
             <tbody>
-              {rows.map(p => {
+              {rows.map((p) => {
                 const u = p.userId;
                 const name = u ? [u.firstName, u.lastName].filter(Boolean).join(' ') : '—';
                 const disableRefund = p.status === 'refunded' || p.status === 'cancelled';
                 const disableCancel = p.status === 'cancelled' || p.status === 'refunded';
                 return (
                   <tr key={p._id} className="border-t">
-                    <td className="px-4 py-3">{p.createdAt ? new Date(p.createdAt).toLocaleString() : '-'}</td>
                     <td className="px-4 py-3">
-                      {u ? <Link className="text-blue-600 hover:underline" to={`/users/${u._id}`}>{name || u.userId}</Link> : '—'}
+                      {p.createdAt ? new Date(p.createdAt).toLocaleString() : '-'}
+                    </td>
+                    <td className="px-4 py-3">
+                      {u ? (
+                        <Link className="text-blue-600 hover:underline" to={`/users/${u._id}`}>
+                          {name || u.userId}
+                        </Link>
+                      ) : (
+                        '—'
+                      )}
                     </td>
                     <td className="px-4 py-3">{u?.userId || '—'}</td>
                     <td className="px-4 py-3">₹{(p.amount ?? 0).toFixed(2)}</td>
@@ -156,21 +216,27 @@ export default function Sales() {
                       ) : null}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-1 rounded-full ${statusClass(p.status)}`}>{p.status || 'paid'}</span>
+                      <span className={`text-xs px-2 py-1 rounded-full ${statusClass(p.status)}`}>
+                        {p.status || 'paid'}
+                      </span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
                         <button
-                          onClick={()=>markStatus(p._id,'refunded')}
+                          onClick={() => markStatus(p._id, 'refunded')}
                           disabled={disableRefund}
-                          className={`text-xs rounded-lg border px-2 py-1 ${disableRefund ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          className={`text-xs rounded-lg border px-2 py-1 ${
+                            disableRefund ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
                         >
                           Refund
                         </button>
                         <button
-                          onClick={()=>markStatus(p._id,'cancelled')}
+                          onClick={() => markStatus(p._id, 'cancelled')}
                           disabled={disableCancel}
-                          className={`text-xs rounded-lg border px-2 py-1 ${disableCancel ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          className={`text-xs rounded-lg border px-2 py-1 ${
+                            disableCancel ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
                         >
                           Cancel
                         </button>

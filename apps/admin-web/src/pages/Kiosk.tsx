@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
 import { Link } from 'react-router-dom';
+import { api } from '../lib/api';
 
-// Explicitly target the member app host
+// Member app base URL (set in Vercel env for admin-web)
 const MEMBER_URL = import.meta.env.VITE_MEMBER_URL || 'http://localhost:5174';
 
 export default function Kiosk() {
@@ -18,31 +18,37 @@ export default function Kiosk() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true); setMsg(''); setErr('');
+    if (busy) return;
+
+    setBusy(true);
+    setMsg('');
+    setErr('');
+
     try {
-      const res = await axios.post('/api/attendance/mark-by-code', {
+      const { data } = await api.post('/attendance/mark-by-code', {
         userCode: code.trim(),
         method: 'kiosk',
         deviceId,
       });
 
-      const u = res.data?.user;
+      const u = data?.user;
       const name = [u?.firstName, u?.lastName].filter(Boolean).join(' ');
-      const uid = u?.id || u?._id;
+      const uid = u?._id || u?.id;
 
       setMsg(`Checked in: ${u?.userId}${name ? ' — ' + name : ''}`);
       setCode('');
 
       if (uid) {
-        // Open MEMBER APP — avoids any admin routing
-        // Same tab:
-        // window.location.assign(`${MEMBER_URL}/me/${uid}`);
-
-        // New tab (recommended for kiosks):
+        // Open Member App view for that user (new tab is kiosk-friendly)
         window.open(`${MEMBER_URL}/me/${uid}`, '_blank', 'noopener,noreferrer');
       }
     } catch (e: any) {
-      setErr(e?.response?.data?.error || e.message || 'Failed to check in');
+      const msg =
+        e?.response?.data?.error ??
+        (typeof e?.response?.data === 'string' ? e.response.data : '') ??
+        e?.message ??
+        'Failed to check in';
+      setErr(String(msg));
     } finally {
       setBusy(false);
     }
@@ -65,7 +71,9 @@ export default function Kiosk() {
           </div>
 
           <div className="mt-2 text-center">
-            <Link to="/admin-login" className="text-sm text-gray-600 underline">Admin login</Link>
+            <Link to="/admin-login" className="text-sm text-gray-600 underline">
+              Admin login
+            </Link>
           </div>
 
           <div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { api } from './lib/api';
 
 import Dashboard from './pages/Dashboard';
 import Packs from './pages/Packs';
@@ -24,9 +24,10 @@ export default function App() {
   const nav = useNavigate();
   const [me, setMe] = useState<Me | undefined>(undefined); // undefined = loading
 
+  // check admin session
   useEffect(() => {
-    axios
-      .get('/api/auth/admin/me', { withCredentials: true })
+    api
+      .get('/auth/admin/me')
       .then((r) => setMe(r.data || null))
       .catch(() => setMe(null));
   }, []);
@@ -39,20 +40,20 @@ export default function App() {
 
   async function logout() {
     try {
-      await axios.post('/api/auth/admin/logout', {}, { withCredentials: true });
+      await api.post('/auth/admin/logout', {});
     } catch {}
     setMe(null);
-    nav('/kiosk'); // send back to kiosk/login
+    nav('/kiosk'); // back to public screen
   }
 
-  // NEW: guard — if unauthenticated and not on kiosk/login, push to /admin-login
+  // guard protected routes
   useEffect(() => {
     if (me === null && !onKioskOrLogin) {
       nav('/admin-login', { replace: true });
     }
   }, [me, onKioskOrLogin, nav]);
 
-  // While checking session, avoid flashing content on protected pages
+  // avoid flashing protected content while session is unknown
   if (me === undefined && !onKioskOrLogin) {
     return <div className="min-h-screen bg-gray-50" />;
   }
@@ -86,17 +87,20 @@ export default function App() {
 
       <main className="max-w-6xl mx-auto">
         <Routes>
+          {/* public */}
+          <Route path="/kiosk" element={<Kiosk />} />
+          <Route path="/admin-login" element={<AdminLogin />} />
+
+          {/* protected (guarded by effect) */}
           <Route path="/" element={<Dashboard />} />
           <Route path="/users" element={<Users />} />
+          <Route path="/users/:id" element={<UserProfile />} />
           <Route path="/packs" element={<Packs />} />
           <Route path="/payments" element={<Payments />} />
           <Route path="/attendance" element={<Attendance />} />
           <Route path="/workouts" element={<Workouts />} />
-          <Route path="/kiosk" element={<Kiosk />} />
-          <Route path="/users/:id" element={<UserProfile />} />
           <Route path="/supplements" element={<Supplements />} />
           <Route path="/sales" element={<Sales />} />
-          <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
         </Routes>
       </main>
