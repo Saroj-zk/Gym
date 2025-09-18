@@ -1,6 +1,7 @@
+// apps/admin-web/src/App.tsx
 import React, { useEffect, useState } from 'react';
 import { Link, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import { api } from './lib/api';
+import { api } from './lib/api'; // <-- use our configured client
 
 import Dashboard from './pages/Dashboard';
 import Packs from './pages/Packs';
@@ -22,10 +23,13 @@ type Me =
 export default function App() {
   const location = useLocation();
   const nav = useNavigate();
-  const [me, setMe] = useState<Me | undefined>(undefined); // undefined = loading
+  const [me, setMe] = useState<Me | undefined>(undefined); // undefined = checking
 
-  // check admin session
   useEffect(() => {
+    // helpful one-time log to verify your base URL in prod
+    // (remove later)
+    // console.log('[api baseURL]', api.defaults.baseURL);
+
     api
       .get('/auth/admin/me')
       .then((r) => setMe(r.data || null))
@@ -43,17 +47,17 @@ export default function App() {
       await api.post('/auth/admin/logout', {});
     } catch {}
     setMe(null);
-    nav('/kiosk'); // back to public screen
+    nav('/kiosk');
   }
 
-  // guard protected routes
+  // Guard: unauthenticated → push to /admin-login (but allow kiosk)
   useEffect(() => {
     if (me === null && !onKioskOrLogin) {
       nav('/admin-login', { replace: true });
     }
   }, [me, onKioskOrLogin, nav]);
 
-  // avoid flashing protected content while session is unknown
+  // While checking session, avoid flashing protected pages
   if (me === undefined && !onKioskOrLogin) {
     return <div className="min-h-screen bg-gray-50" />;
   }
@@ -87,20 +91,17 @@ export default function App() {
 
       <main className="max-w-6xl mx-auto">
         <Routes>
-          {/* public */}
-          <Route path="/kiosk" element={<Kiosk />} />
-          <Route path="/admin-login" element={<AdminLogin />} />
-
-          {/* protected (guarded by effect) */}
           <Route path="/" element={<Dashboard />} />
           <Route path="/users" element={<Users />} />
-          <Route path="/users/:id" element={<UserProfile />} />
           <Route path="/packs" element={<Packs />} />
           <Route path="/payments" element={<Payments />} />
           <Route path="/attendance" element={<Attendance />} />
           <Route path="/workouts" element={<Workouts />} />
+          <Route path="/kiosk" element={<Kiosk />} />
+          <Route path="/users/:id" element={<UserProfile />} />
           <Route path="/supplements" element={<Supplements />} />
           <Route path="/sales" element={<Sales />} />
+          <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
         </Routes>
       </main>
