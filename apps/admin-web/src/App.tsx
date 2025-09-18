@@ -1,7 +1,7 @@
 // apps/admin-web/src/App.tsx
 import React, { useEffect, useState } from 'react';
 import { Link, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import { api } from './lib/api'; // <-- use our configured client
+import { api } from './lib/api';
 
 import Dashboard from './pages/Dashboard';
 import Packs from './pages/Packs';
@@ -25,27 +25,29 @@ export default function App() {
   const nav = useNavigate();
   const [me, setMe] = useState<Me | undefined>(undefined); // undefined = checking
 
-  useEffect(() => {
-    // helpful one-time log to verify your base URL in prod
-    // (remove later)
-    // console.log('[api baseURL]', api.defaults.baseURL);
-
-    api
-      .get('/auth/admin/me')
-      .then((r) => setMe(r.data || null))
-      .catch(() => setMe(null));
-  }, []);
-
   const onKioskOrLogin =
     location.pathname.startsWith('/kiosk') ||
     location.pathname.startsWith('/admin-login');
 
+  // Initial check on mount
+  useEffect(() => {
+    api.get('/auth/admin/me')
+      .then(r => setMe(r.data || null))
+      .catch(() => setMe(null));
+  }, []);
+
+  // IMPORTANT: re-check session after SPA navigations (e.g., right after login nav('/'))
+  useEffect(() => {
+    if (onKioskOrLogin) return; // skip kiosk/login pages
+    api.get('/auth/admin/me')
+      .then(r => setMe(r.data || null))
+      .catch(() => setMe(null));
+  }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const showHeader = !!me && me.role === 'admin' && !onKioskOrLogin;
 
   async function logout() {
-    try {
-      await api.post('/auth/admin/logout', {});
-    } catch {}
+    try { await api.post('/auth/admin/logout', {}); } catch {}
     setMe(null);
     nav('/kiosk');
   }
@@ -56,6 +58,13 @@ export default function App() {
       nav('/admin-login', { replace: true });
     }
   }, [me, onKioskOrLogin, nav]);
+
+  // If already logged in and on the login page, send to dashboard
+  useEffect(() => {
+    if (me && location.pathname === '/admin-login') {
+      nav('/', { replace: true });
+    }
+  }, [me, location.pathname, nav]);
 
   // While checking session, avoid flashing protected pages
   if (me === undefined && !onKioskOrLogin) {

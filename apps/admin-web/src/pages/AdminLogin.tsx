@@ -11,25 +11,21 @@ export default function AdminLogin() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (busy) return;
-
     setBusy(true);
     setErr('');
-
     try {
       const id = emailOrUserId.trim();
       const body: Record<string, string> = { password: password.trim() };
-      if (id.includes('@')) body.email = id;
-      else body.userId = id;
+      if (id.includes('@')) body.email = id; else body.userId = id;
 
-      // Hit Render API (no /api prefix). Cookies allowed via withCredentials in api client.
-      const { data } = await api.post('/auth/admin/login', body);
-      if (!data?.ok) throw new Error(data?.error || 'Login failed');
+      // 1) Login to API (must be the API origin from VITE_API_URL)
+      await api.post('/auth/admin/login', body);
 
-      // Optional: verify cookie round-trip
-      await api.get('/auth/admin/me').catch(() => {});
+      // 2) Confirm the cookie works
+      await api.get('/auth/admin/me');
 
-      nav('/'); // dashboard home
+      // 3) Go to dashboard
+      nav('/');
     } catch (e: any) {
       const msg =
         e?.response?.data?.error ??
@@ -42,10 +38,7 @@ export default function AdminLogin() {
     }
   }
 
-  const canSubmit =
-    emailOrUserId.trim().length > 0 &&
-    password.trim().length > 0 &&
-    !busy;
+  const canSubmit = emailOrUserId.trim() && password.trim() && !busy;
 
   return (
     <div className="min-h-screen bg-gray-50 grid place-items-center p-6">
@@ -53,22 +46,26 @@ export default function AdminLogin() {
         <div className="text-lg font-semibold mb-1">Admin Login</div>
         <div className="text-sm text-gray-600 mb-4">Sign in to Admin Dashboard</div>
 
-        <label className="block text-sm text-gray-600 mb-1">Email or Admin User ID</label>
+        <label className="block text-sm text-gray-600 mb-1" htmlFor="admin-id">
+          Email or Admin User ID
+        </label>
         <input
+          id="admin-id"
           value={emailOrUserId}
           onChange={(e) => setId(e.target.value)}
           className="w-full rounded-xl border px-3 py-2 mb-3"
           autoFocus
-          autoComplete="username"
         />
 
-        <label className="block text-sm text-gray-600 mb-1">Password</label>
+        <label className="block text-sm text-gray-600 mb-1" htmlFor="admin-pw">
+          Password
+        </label>
         <input
+          id="admin-pw"
           type="password"
           value={password}
           onChange={(e) => setPw(e.target.value)}
           className="w-full rounded-xl border px-3 py-2 mb-4"
-          autoComplete="current-password"
         />
 
         {err && <div className="mb-3 text-sm text-red-600">{err}</div>}
@@ -82,9 +79,7 @@ export default function AdminLogin() {
         </button>
 
         <div className="mt-4 text-center">
-          <Link to="/kiosk" className="text-sm text-gray-600 underline">
-            Back to Kiosk
-          </Link>
+          <Link to="/kiosk" className="text-sm text-gray-600 underline">Back to Kiosk</Link>
         </div>
       </form>
     </div>
