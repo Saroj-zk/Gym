@@ -86,7 +86,7 @@ export default function App() {
       {showHeader && (
         <header className="bg-white shadow">
           <div className="max-w-6xl mx-auto p-4 flex gap-4 items-center">
-            <h1 className="font-bold">Gym Admin</h1>
+            <h1 className="font-bold">MK</h1>
             <nav className="flex gap-4 text-sm">
               <Link to="/">Dashboard</Link>
               <Link to="/users">Users</Link>
@@ -95,9 +95,9 @@ export default function App() {
               <Link to="/attendance">Attendance</Link>
               <Link to="/workouts">Workouts</Link>
               <Link to="/supplements">Supplements</Link>
-              <Link to="/kiosk">Kiosk</Link>
               <Link to="/sales">Orders</Link>
               <Link to="/leaderboard">Leaderboard</Link>
+              <Link to="/kiosk">Kiosk</Link>
             </nav>
             <div className="ml-auto">
               <button onClick={logout} className="px-3 py-2 rounded-xl border text-sm">
