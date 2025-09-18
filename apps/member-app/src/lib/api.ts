@@ -1,7 +1,7 @@
-// apps/member-app/src/lib/api.ts
-import axios from "axios";
+// member-app/src/lib/api.ts
+import axios from 'axios';
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
-  withCredentials: true, // send/receive auth cookies
+  baseURL: '/api',
+  withCredentials: true, // fine to leave true; cookies get forwarded if used
 });

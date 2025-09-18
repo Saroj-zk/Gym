@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import axios from 'axios';
+import { api } from '../lib/api';
 
 type User = {
   _id: string;
@@ -32,7 +32,6 @@ type Payment = {
   createdAt?: string;
 };
 
-// Line items sent to meta on checkout
 type SaleItem = { supplementId: string; name: string; qty: number; price: number };
 
 const dayLabels: Record<DayKey, string> = {
@@ -53,6 +52,13 @@ function startOfWeek(d = new Date()) {
   return x;
 }
 
+// Always send Monday at 00:00:00 **UTC** to match API expectation
+function isoDateAt00Z(date: Date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+}
+
 export default function MemberHome() {
   const { id } = useParams(); // Mongo _id of the user
   const nav = useNavigate();
@@ -66,15 +72,16 @@ export default function MemberHome() {
 
   // shop
   const [items, setItems] = useState<Supplement[]>([]);
-  const [cart, setCart] = useState<Record<string, number>>({}); // id -> qty
+  const [cart, setCart] = useState<Record<string, number>>({});
   const [payMethod, setPayMethod] = useState<'cash' | 'upi' | 'card' | 'bank'>('upi');
 
   // orders
   const [orders, setOrders] = useState<Payment[]>([]);
 
-  const weekInputValue = new Date(week.getTime() - week.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 10);
+  const weekInputValue = useMemo(() => {
+    const local = new Date(week.getTime() - week.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 10);
+  }, [week]);
 
   useEffect(() => {
     loadUser();
@@ -83,7 +90,7 @@ export default function MemberHome() {
   useEffect(() => {
     loadWorkouts(week);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]); // initial load for workouts when member changes
+  }, [id]);
 
   useEffect(() => {
     if (tab === 'shop') loadSupplements();
@@ -93,15 +100,15 @@ export default function MemberHome() {
 
   async function loadUser() {
     if (!id) return;
-    const res = await axios.get(`/api/users/${id}`);
+    const res = await api.get(`/users/${id}`);
     setUser(res.data);
   }
 
   async function loadWorkouts(weekDate: Date) {
     if (!id) return;
     try {
-      const res = await axios.get('/api/workouts/week', {
-        params: { userId: id, weekStart: new Date(weekDate).toISOString() },
+      const res = await api.get('/workouts/week', {
+        params: { userId: id, weekStart: isoDateAt00Z(weekDate) },
       });
       const days: Days =
         res.data?.days || { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [] };
@@ -113,7 +120,7 @@ export default function MemberHome() {
 
   async function loadSupplements() {
     try {
-      const res = await axios.get('/api/supplements', { params: { active: true, limit: 200 } });
+      const res = await api.get('/supplements', { params: { active: true, limit: 200 } });
       setItems(res.data || []);
     } catch {
       /* noop */
@@ -123,7 +130,7 @@ export default function MemberHome() {
   async function loadOrders() {
     if (!id) return;
     try {
-      const res = await axios.get('/api/payments', { params: { userId: id, limit: 50 } });
+      const res = await api.get('/payments', { params: { userId: id, limit: 50 } });
       setOrders(res.data || []);
     } catch {
       /* ignore */
@@ -132,15 +139,12 @@ export default function MemberHome() {
 
   function logout() {
     try {
-      // Clear remembered member data
       localStorage.removeItem('memberUserCode');
       localStorage.removeItem('memberId');
-      // Clear any member-* keys if you used them
       Object.keys(localStorage)
         .filter((k) => /^member/i.test(k))
         .forEach((k) => localStorage.removeItem(k));
     } catch {}
-    // Go back to the member app's check-in page
     nav('/', { replace: true });
   }
 
@@ -169,7 +173,7 @@ export default function MemberHome() {
   }
 
   function clearCart() {
-    setCart({ });
+    setCart({});
   }
 
   const total = useMemo(() => {
@@ -183,7 +187,6 @@ export default function MemberHome() {
   async function checkout() {
     if (!id) return;
 
-    // Build line items from the cart (for meta.items)
     const itemsForMeta: SaleItem[] = Object.entries(cart)
       .map(([supplementId, qty]) => {
         const it = items.find((i) => i._id === supplementId);
@@ -202,19 +205,19 @@ export default function MemberHome() {
     if (itemsForMeta.length === 0) return alert('Cart is empty.');
 
     try {
-      // 1) create a Payment WITH line items in meta
-      await axios.post('/api/payments', {
+      // ✅ Correct endpoint for recording a payment
+      await api.post('/payments/record', {
         userId: id,
         amount: total,
-        method: payMethod, // 'upi' | 'cash' | 'card' | 'bank'
+        method: payMethod,
         description: `Supplement purchase: ${descriptionParts.join(', ')}`,
         meta: { items: itemsForMeta },
       });
 
-      // 2) decrement stock for each item
+      // Adjust inventory
       await Promise.all(
         itemsForMeta.map((it) =>
-          axios.patch(`/api/supplements/${it.supplementId}/stock`, { delta: -it.qty })
+          api.patch(`/supplements/${it.supplementId}/stock`, { delta: -it.qty })
         )
       );
 
@@ -236,8 +239,7 @@ export default function MemberHome() {
         <div>
           <div className="text-sm text-gray-500">Member</div>
           <h1 className="text-xl font-semibold">
-            {fullName || 'Member'}{' '}
-            <span className="text-gray-400 font-normal">({user?.userId})</span>
+            {fullName || 'Member'} <span className="text-gray-400 font-normal">({user?.userId})</span>
           </h1>
         </div>
 
@@ -246,22 +248,18 @@ export default function MemberHome() {
         </button>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-2">
         {(['workouts', 'shop', 'orders'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-3 py-2 rounded-xl border text-sm ${
-              tab === t ? 'bg-black text-white' : 'bg-white'
-            }`}
+            className={`px-3 py-2 rounded-xl border text-sm ${tab === t ? 'bg-black text-white' : 'bg-white'}`}
           >
             {t === 'workouts' ? 'Workouts' : t === 'shop' ? 'Supplements' : 'My Orders'}
           </button>
         ))}
       </div>
 
-      {/* Workouts */}
       {tab === 'workouts' && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
@@ -335,7 +333,6 @@ export default function MemberHome() {
         </div>
       )}
 
-      {/* Shop */}
       {tab === 'shop' && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -380,7 +377,6 @@ export default function MemberHome() {
             })}
           </div>
 
-          {/* Cart */}
           <div className="rounded-2xl bg-white shadow p-4">
             <div className="flex items-center justify-between">
               <div className="font-medium">Cart Total</div>
@@ -411,7 +407,6 @@ export default function MemberHome() {
         </div>
       )}
 
-      {/* Orders */}
       {tab === 'orders' && (
         <div className="space-y-4">
           {orders.length === 0 ? (
