@@ -29,20 +29,30 @@ export default function App() {
     location.pathname.startsWith('/kiosk') ||
     location.pathname.startsWith('/admin-login');
 
-  // Initial check on mount
+  async function fetchMe() {
+    try {
+      const res = await api.get('/auth/admin/me', {
+        // Accept 304 (Not Modified) as a “success” status too
+        validateStatus: (s) => (s >= 200 && s < 300) || s === 304,
+      });
+      // If 304, keep previous value (don’t clobber to null)
+      setMe((prev) => (res.status === 304 ? (prev ?? null) : (res.data || null)));
+    } catch {
+      setMe(null);
+    }
+  }
+
+  // Initial check
   useEffect(() => {
-    api.get('/auth/admin/me')
-      .then(r => setMe(r.data || null))
-      .catch(() => setMe(null));
+    fetchMe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // IMPORTANT: re-check session after SPA navigations (e.g., right after login nav('/'))
+  // Re-check after SPA navigations (e.g. right after login nav('/'))
   useEffect(() => {
-    if (onKioskOrLogin) return; // skip kiosk/login pages
-    api.get('/auth/admin/me')
-      .then(r => setMe(r.data || null))
-      .catch(() => setMe(null));
-  }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!onKioskOrLogin) fetchMe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   const showHeader = !!me && me.role === 'admin' && !onKioskOrLogin;
 
