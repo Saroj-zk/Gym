@@ -1,13 +1,13 @@
+// apps/admin-web/src/pages/Kiosk.tsx
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 
-// Member app base URL (set in Vercel env for admin-web)
-const MEMBER_URL = import.meta.env.VITE_MEMBER_URL || 'http://localhost:5174';
-
 export default function Kiosk() {
   const [code, setCode] = useState('');
-  const [deviceId, setDeviceId] = useState(localStorage.getItem('kioskDeviceId') || 'FrontDesk-1');
+  const [deviceId, setDeviceId] = useState(
+    localStorage.getItem('kioskDeviceId') || 'FrontDesk-1'
+  );
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string>('');
   const [err, setErr] = useState<string>('');
@@ -33,22 +33,16 @@ export default function Kiosk() {
 
       const u = data?.user;
       const name = [u?.firstName, u?.lastName].filter(Boolean).join(' ');
-      const uid = u?._id || u?.id;
-
       setMsg(`Checked in: ${u?.userId}${name ? ' — ' + name : ''}`);
       setCode('');
-
-      if (uid) {
-        // Open Member App view for that user (new tab is kiosk-friendly)
-        window.open(`${MEMBER_URL}/me/${uid}`, '_blank', 'noopener,noreferrer');
-      }
+      // ✅ No redirection or window.open — stay on kiosk
     } catch (e: any) {
-      const msg =
+      const m =
         e?.response?.data?.error ??
         (typeof e?.response?.data === 'string' ? e.response.data : '') ??
         e?.message ??
         'Failed to check in';
-      setErr(String(msg));
+      setErr(String(m));
     } finally {
       setBusy(false);
     }
@@ -58,6 +52,7 @@ export default function Kiosk() {
     <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
       <div className="w-full max-w-lg rounded-2xl bg-white shadow p-6">
         <h1 className="text-2xl font-bold mb-4">Kiosk Check-in</h1>
+
         <form onSubmit={submit} className="space-y-4">
           <div>
             <label className="block text-sm text-gray-600 mb-1">User ID</label>
@@ -83,13 +78,23 @@ export default function Kiosk() {
               onChange={(e) => setDeviceId(e.target.value)}
               className="w-full rounded-xl border px-3 py-2"
             />
-            <p className="text-xs text-gray-500 mt-1">Used to identify the front-desk kiosk in logs.</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Used to identify the front-desk kiosk in logs.
+            </p>
           </div>
 
-          {err && <div className="p-3 rounded-xl bg-red-50 text-red-700 text-sm">{err}</div>}
-          {msg && <div className="p-3 rounded-xl bg-green-50 text-green-700 text-sm">{msg}</div>}
+          {err && (
+            <div className="p-3 rounded-xl bg-red-50 text-red-700 text-sm">{err}</div>
+          )}
+          {msg && (
+            <div className="p-3 rounded-xl bg-green-50 text-green-700 text-sm">{msg}</div>
+          )}
 
-          <button type="submit" disabled={busy} className="w-full px-4 py-3 rounded-xl bg-black text-white">
+          <button
+            type="submit"
+            disabled={busy}
+            className="w-full px-4 py-3 rounded-xl bg-black text-white disabled:opacity-50"
+          >
             {busy ? 'Checking in…' : 'Check In'}
           </button>
         </form>
