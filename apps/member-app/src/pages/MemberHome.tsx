@@ -390,9 +390,7 @@ export default function MemberHome() {
                 className="rounded-xl border px-3 py-2 text-sm"
               >
                 <option value="upi">UPI</option>
-                <option value="cash">Cash</option>
                 <option value="card">Card</option>
-                <option value="bank">Bank Transfer</option>
               </select>
               <div className="flex-1" />
               <button
