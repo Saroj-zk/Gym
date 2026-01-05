@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { api } from './lib/api';
+import { AppLayout } from './components/AppLayout';
 
 import Dashboard from './pages/Dashboard';
 import Packs from './pages/Packs';
@@ -57,7 +58,7 @@ export default function App() {
   const showHeader = !!me && me.role === 'admin' && !onKioskOrLogin;
 
   async function logout() {
-    try { await api.post('/auth/admin/logout', {}); } catch {}
+    try { await api.post('/auth/admin/logout', {}); } catch { }
     setMe(null);
     nav('/kiosk');
   }
@@ -78,51 +79,38 @@ export default function App() {
 
   // While checking session, avoid flashing protected pages
   if (me === undefined && !onKioskOrLogin) {
-    return <div className="min-h-screen bg-gray-50" />;
+    return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><div className="w-6 h-6 border-2 border-brand-600 border-t-transparent rounded-full animate-spin"></div></div>;
+  }
+
+  const routes = (
+    <Routes>
+      <Route path="/" element={<Dashboard />} />
+      <Route path="/users" element={<Users />} />
+      <Route path="/packs" element={<Packs />} />
+      <Route path="/payments" element={<Payments />} />
+      <Route path="/attendance" element={<Attendance />} />
+      <Route path="/workouts" element={<Workouts />} />
+      <Route path="/kiosk" element={<Kiosk />} />
+      <Route path="/users/:id" element={<UserProfile />} />
+      <Route path="/supplements" element={<Supplements />} />
+      <Route path="/sales" element={<Sales />} />
+      <Route path="/admin-login" element={<AdminLogin />} />
+      <Route path="/leaderboard" element={<Leaderboard />} />
+    </Routes>
+  );
+
+  if (showHeader) {
+    return (
+      <AppLayout onLogout={logout} user={me}>
+        {routes}
+      </AppLayout>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {showHeader && (
-        <header className="bg-white shadow">
-          <div className="max-w-6xl mx-auto p-4 flex gap-4 items-center">
-            <h1 className="font-bold">MK</h1>
-            <nav className="flex gap-4 text-sm">
-              <Link to="/">Dashboard</Link>
-              <Link to="/users">Users</Link>
-              <Link to="/packs">Packs</Link>
-              <Link to="/payments">Payments</Link>
-              <Link to="/attendance">Attendance</Link>
-              <Link to="/workouts">Workouts</Link>
-              <Link to="/supplements">Supplements</Link>
-              <Link to="/sales">Orders</Link>
-              <Link to="/leaderboard">Leaderboard</Link>
-              <Link to="/kiosk">Kiosk</Link>
-            </nav>
-            <div className="ml-auto">
-              <button onClick={logout} className="px-3 py-2 rounded-xl border text-sm">
-                Log out
-              </button>
-            </div>
-          </div>
-        </header>
-      )}
-
-      <main className="max-w-6xl mx-auto">
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/users" element={<Users />} />
-          <Route path="/packs" element={<Packs />} />
-          <Route path="/payments" element={<Payments />} />
-          <Route path="/attendance" element={<Attendance />} />
-          <Route path="/workouts" element={<Workouts />} />
-          <Route path="/kiosk" element={<Kiosk />} />
-          <Route path="/users/:id" element={<UserProfile />} />
-          <Route path="/supplements" element={<Supplements />} />
-          <Route path="/sales" element={<Sales />} />
-          <Route path="/admin-login" element={<AdminLogin />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
-        </Routes>
+    <div className="min-h-screen bg-slate-50">
+      <main>
+        {routes}
       </main>
     </div>
   );

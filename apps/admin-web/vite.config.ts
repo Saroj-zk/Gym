@@ -8,7 +8,7 @@ export default defineConfig({
     proxy: {
       // Frontend calls /api/... -> send to API on 3000 and strip the /api prefix
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:4000',
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/api/, ''),
       },
