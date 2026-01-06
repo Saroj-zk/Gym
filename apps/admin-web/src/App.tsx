@@ -35,13 +35,7 @@ export default function App() {
   async function fetchMe() {
     try {
       const res = await api.get('/auth/admin/me');
-      if (res.status === 200 && res.data) {
-        setMe(res.data);
-      } else if (res.status === 304) {
-        setMe(prev => prev || null);
-      } else {
-        setMe(null);
-      }
+      setMe(res.data || null);
     } catch {
       setMe(null);
     }

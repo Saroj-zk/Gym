@@ -99,6 +99,14 @@ async function bootstrap() {
   app.use(cors(corsOpts));
   app.options('*', cors(corsOpts)); // ensure preflight works everywhere
 
+  // Disable caching for all API routes to prevent 304/state issues in management portals
+  app.use((_req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    next();
+  });
+
   /** -------------------- Security / parsers -------------------- **/
   app.use(
     helmet({
