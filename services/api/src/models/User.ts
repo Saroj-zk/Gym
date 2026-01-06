@@ -21,6 +21,12 @@ const UserSchema = new Schema({
 
   profileImageUrl: String,
 
+  // Physical Stats
+  weight: { type: Number }, // kg
+  height: { type: Number }, // cm
+  activityLevel: { type: String, default: 'moderate' }, // sedentary, light, moderate, active, extra
+
+
   status: { type: String, default: 'active' },   // 'active' | 'inactive' | ...
   role: { type: String, default: 'member' },     // 'member' | 'admin' | ...
   passwordHash: { type: String, select: false }, // password login

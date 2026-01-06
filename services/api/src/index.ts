@@ -22,6 +22,8 @@ import workoutsRouter from './routes/workouts.js';
 import supplementsRouter from './routes/supplements.js';
 import authRoutes from './routes/auth.js';
 import settingsRoutes from './routes/settings.js';
+import dietRouter from './routes/diet.js';
+import appointmentsRouter from './routes/appointments.js';
 
 async function bootstrap() {
   await connectDB();
@@ -36,8 +38,11 @@ async function bootstrap() {
   const DEFAULT_ALLOWED = [
     'http://localhost:5173',
     'http://localhost:5174',
+    'http://localhost:5175',
+    'http://localhost:5176',
     'https://gym-member-app.vercel.app',
     'https://gym-admin-web-brown.vercel.app',
+
   ];
 
   // Optional wildcard acceptance for Vercel previews of these projects
@@ -110,7 +115,7 @@ async function bootstrap() {
     const u = new URL(config.mongoUri);
     console.log(`[DB] host=${u.host} db=${u.pathname.slice(1) || '(none)'} scheme=${u.protocol}`);
     console.log('[CORS] allowed:', ALLOWED_LIST.join(', '));
-  } catch {}
+  } catch { }
 
   /** -------------------- Health -------------------- **/
   app.get('/healthz', async (_req, res) => {
@@ -136,6 +141,10 @@ async function bootstrap() {
   app.use('/workouts', workoutsRouter);
   app.use('/supplements', supplementsRouter);
   app.use('/settings', settingsRoutes);
+  app.use('/diet', dietRouter);
+  app.use('/appointments', appointmentsRouter);
+
+
 
   // Error handler (must be after routes)
   app.use(errorHandler);

@@ -1,5 +1,6 @@
 // services/api/src/routes/users.ts
 import { Router } from 'express';
+import mongoose from 'mongoose';
 import { createUserSchema } from '../utils/validators.js';
 import User from '../models/User.js';
 import Membership from '../models/Membership.js';
@@ -11,6 +12,41 @@ const router = Router();
 /**
  * GET /users
  */
+import Attendance from '../models/Attendance.js';
+
+/**
+ * GET /users/leaderboard
+ * Top 10 users with most check-ins in the current month
+ */
+router.get('/leaderboard', async (req, res, next) => {
+  try {
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const agg = await Attendance.aggregate([
+      { $match: { timestamp: { $gte: startOfMonth } } },
+      { $group: { _id: '$userId', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 },
+      { $lookup: { from: 'users', localField: '_id', foreignField: 'userId', as: 'user' } },
+      { $unwind: '$user' },
+      {
+        $project: {
+          _id: 1,
+          count: 1,
+          firstName: '$user.firstName',
+          lastName: '$user.lastName',
+          avatar: '$user.profileImageUrl',
+          userId: '$user.userId'
+        }
+      }
+    ]);
+
+    res.json(agg);
+  } catch (e) { next(e); }
+});
+
 router.get('/', async (req, res, next) => {
   try {
     const { q, status, role, limit } = req.query as {
@@ -47,11 +83,16 @@ router.post('/', async (req, res, next) => {
   try {
     const body = createUserSchema.parse(req.body);
 
-    // Generate a readable userId
-    const count = await User.countDocuments();
-    const userId = body?.email
-      ? body.email.split('@')[0]
-      : `U${(count + 1).toString().padStart(5, '0')}`;
+    // Generate a sequential numeric userId (1, 2, 3...)
+    const latestUser = await User.findOne({ userId: { $regex: /^\d+$/ } })
+      .sort({ userId: -1 })
+      .collation({ locale: 'en_US', numericOrdering: true });
+
+    let nextId = 1;
+    if (latestUser && latestUser.userId && !isNaN(Number(latestUser.userId))) {
+      nextId = Number(latestUser.userId) + 1;
+    }
+    const userId = nextId.toString();
 
     const user = await User.create({ ...body, userId });
 
@@ -95,6 +136,60 @@ router.post('/', async (req, res, next) => {
 });
 
 /**
+ * POST /users/import
+ * Expects JSON { csvData: string }
+ */
+router.post('/import', async (req, res, next) => {
+  try {
+    const { csvData } = req.body;
+    if (!csvData) throw new Error('No CSV data provided');
+
+    const lines = csvData.split(/\r?\n/).filter((l: string) => l.trim().length > 0);
+    // Assume header row exists, skip it
+    const start = lines[0].toLowerCase().includes('first') ? 1 : 0;
+
+    const usersToCreate = [];
+
+    // Find latest ID for sequential generation
+    const latestUser = await User.findOne({ userId: { $regex: /^\d+$/ } })
+      .sort({ userId: -1 })
+      .collation({ locale: 'en_US', numericOrdering: true });
+
+    let nextId = 1;
+    if (latestUser && latestUser.userId && !isNaN(Number(latestUser.userId))) {
+      nextId = Number(latestUser.userId) + 1;
+    }
+
+    for (let i = start; i < lines.length; i++) {
+      // Simple splitting by comma ( caveat: will break if fields contain commas )
+      const cols = lines[i].split(',').map((c: string) => c.trim().replace(/^"|"$/g, ''));
+      // Mapping: 0:First, 1:Last, 2:Email, 3:Mobile ... adjust as needed or try to be smart
+      // Let's assume generic: First Name, Last Name, Email, Mobile
+      if (cols.length < 2) continue;
+
+      const [firstName, lastName, email, mobile, weight] = cols;
+
+      usersToCreate.push({
+        userId: (nextId++).toString(),
+        firstName: firstName || 'Unknown',
+        lastName: lastName || '',
+        email: email,
+        mobile: mobile,
+        weight: weight ? Number(weight) : undefined,
+        status: 'active',
+        password: '123' // default password logic
+      });
+    }
+
+    if (usersToCreate.length > 0) {
+      await User.insertMany(usersToCreate);
+    }
+
+    res.json({ count: usersToCreate.length });
+  } catch (e) { next(e); }
+});
+
+/**
  * GET /users/export/csv
  * (Keep this BEFORE '/:id' so it isn't shadowed.)
  */
@@ -130,7 +225,14 @@ router.get('/export/csv', async (req, res, next) => {
  * GET /users/:id
  */
 router.get('/:id', async (req, res) => {
-  const user = await User.findById(req.params.id);
+  let user;
+  if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+    user = await User.findById(req.params.id);
+  }
+  if (!user) {
+    user = await User.findOne({ userId: req.params.id });
+  }
+
   if (!user) return res.status(404).json({ error: 'Not found' });
   res.json(user);
 });

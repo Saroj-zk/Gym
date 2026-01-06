@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Plus, Download, Filter, Trash2, Eye, User as UserIcon, X, Calendar } from 'lucide-react';
+import { Search, Plus, Download, Filter, Trash2, Eye, User as UserIcon, X, Calendar, Upload } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { clsx } from 'clsx';
 
@@ -41,6 +42,7 @@ const emptyForm = {
   dob: '',
   packId: '',
   startDate: new Date().toISOString().slice(0, 10),
+  weight: '',
 };
 
 
@@ -72,6 +74,7 @@ function getErr(e: any, fallback = 'Request failed') {
 }
 
 export default function Users() {
+  const [searchParams] = useSearchParams();
   const [users, setUsers] = useState<User[]>([]);
   const [packs, setPacks] = useState<Pack[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,6 +132,9 @@ export default function Users() {
 
   useEffect(() => {
     load();
+    if (searchParams.get('new') === 'true') {
+      setOpen(true);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -153,7 +159,9 @@ export default function Users() {
         email: form.email.trim() || undefined,
         mobile: form.mobile.trim() || undefined,
         gender: form.gender,
+
         dob: form.dob || undefined,
+        weight: form.weight ? Number(form.weight) : undefined,
       };
       if (form.packId) {
         payload.packId = form.packId;
@@ -201,6 +209,27 @@ export default function Users() {
     }
   }
 
+  async function importUsers(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!e.target.files?.length) return;
+    const file = e.target.files[0];
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      const text = evt.target?.result as string;
+      if (!text) return;
+
+      try {
+        await api.post('/users/import', { csvData: text });
+        alert('Import successful');
+        load();
+      } catch (e: any) {
+        alert(getErr(e, 'Import failed'));
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // reset
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -209,6 +238,11 @@ export default function Users() {
           <p className="text-slate-500 mt-1">Manage your gym members and their subscriptions.</p>
         </div>
         <div className="flex gap-2">
+          <label className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm cursor-pointer">
+            <Upload size={16} />
+            Import CSV
+            <input type="file" accept=".csv" onChange={importUsers} className="hidden" />
+          </label>
           <button
             onClick={exportCSV}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm"
@@ -455,6 +489,16 @@ export default function Users() {
                       value={form.dob}
                       onChange={(e) => onChange('dob', e.target.value)}
                       className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Weight (kg)</label>
+                    <input
+                      type="number"
+                      value={form.weight}
+                      onChange={(e) => onChange('weight', e.target.value)}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none"
+                      placeholder="e.g. 75"
                     />
                   </div>
                 </div>

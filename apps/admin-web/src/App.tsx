@@ -16,6 +16,8 @@ import Supplements from './pages/Supplements';
 import Sales from './pages/Sales';
 import AdminLogin from './pages/AdminLogin';
 import Leaderboard from './pages/Leaderboard';
+import DietFoods from './pages/DietFoods';
+import Appointments from './pages/Appointments';
 
 type Me =
   | { _id: string; userId: string; firstName?: string; lastName?: string; email?: string; role: 'admin' }
@@ -96,6 +98,8 @@ export default function App() {
       <Route path="/sales" element={<Sales />} />
       <Route path="/admin-login" element={<AdminLogin />} />
       <Route path="/leaderboard" element={<Leaderboard />} />
+      <Route path="/diet-foods" element={<DietFoods />} />
+      <Route path="/appointments" element={<Appointments />} />
     </Routes>
   );
 

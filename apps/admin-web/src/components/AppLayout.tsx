@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
     Users, Package, CreditCard, CalendarCheck,
     Dumbbell, Pill, ShoppingCart, Trophy, Monitor,
-    LogOut, LayoutDashboard, Menu, X
+    LogOut, LayoutDashboard, Menu, X, Utensils, CalendarDays
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -25,7 +25,9 @@ export function AppLayout({ children, onLogout, user }: AppLayoutProps) {
         { label: 'Attendance', path: '/attendance', icon: CalendarCheck },
         { label: 'Workouts', path: '/workouts', icon: Dumbbell },
         { label: 'Supplements', path: '/supplements', icon: Pill },
+        { label: 'Diet Foods', path: '/diet-foods', icon: Utensils },
         { label: 'Orders', path: '/sales', icon: ShoppingCart },
+        { label: 'Appointments', path: '/appointments', icon: CalendarDays },
         { label: 'Leaderboard', path: '/leaderboard', icon: Trophy },
     ];
 
