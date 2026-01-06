@@ -34,12 +34,14 @@ export default function App() {
 
   async function fetchMe() {
     try {
-      const res = await api.get('/auth/admin/me', {
-        // Accept 304 (Not Modified) as a “success” status too
-        validateStatus: (s) => (s >= 200 && s < 300) || s === 304,
-      });
-      // If 304, keep previous value (don’t clobber to null)
-      setMe((prev) => (res.status === 304 ? (prev ?? null) : (res.data || null)));
+      const res = await api.get('/auth/admin/me');
+      if (res.status === 200 && res.data) {
+        setMe(res.data);
+      } else if (res.status === 304) {
+        setMe(prev => prev || null);
+      } else {
+        setMe(null);
+      }
     } catch {
       setMe(null);
     }

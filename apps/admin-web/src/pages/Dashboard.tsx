@@ -59,7 +59,7 @@ export default function Dashboard() {
 
   const revenue7d = kpis?.rev?.series?.reduce((a: number, b: any) => a + (Number(b?.value) || 0), 0) ?? 0;
 
-  const peakHour = kpis?.peaks?.byHour?.sort((a: any, b: any) => (b?.count || 0) - (a?.count || 0))[0]?.hour ?? '-';
+  const peakHour = kpis?.peaks?.byHour?.slice().sort((a: any, b: any) => (b?.count || 0) - (a?.count || 0))?.[0]?.hour ?? '-';
 
   if (loading) {
     return <div className="flex items-center justify-center h-96">
