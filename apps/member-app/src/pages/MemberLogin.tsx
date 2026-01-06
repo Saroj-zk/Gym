@@ -24,6 +24,10 @@ export default function MemberLogin() {
         mobileLast4: mobileLast4.trim()
       });
 
+      if (res.data?.token) {
+        localStorage.setItem('member_token', res.data.token);
+      }
+
       const uid = res.data?.user?._id;
       if (!uid) throw new Error("No user id");
 
