@@ -148,7 +148,7 @@ router.post('/import', async (req, res, next) => {
     // Assume header row exists, skip it
     const start = lines[0].toLowerCase().includes('first') ? 1 : 0;
 
-    const usersToCreate = [];
+    const usersToCreate: any[] = [];
 
     // Find latest ID for sequential generation
     const latestUser = await User.findOne({ userId: { $regex: /^\d+$/ } })
