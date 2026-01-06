@@ -57,6 +57,7 @@ export default function App() {
 
   async function logout() {
     try { await api.post('/auth/admin/logout', {}); } catch { }
+    localStorage.removeItem('admin_token');
     setMe(null);
     nav('/kiosk');
   }

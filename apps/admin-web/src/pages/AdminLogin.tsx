@@ -22,7 +22,10 @@ export default function AdminLogin() {
       if (id.includes('@')) body.email = id; else body.userId = id;
 
       // 1) Login to API (must be the API origin from VITE_API_URL)
-      await api.post('/auth/admin/login', body);
+      const res = await api.post('/auth/admin/login', body);
+      if (res.data?.token) {
+        localStorage.setItem('admin_token', res.data.token);
+      }
 
       // 2) Confirm the cookie works
       await api.get('/auth/admin/me');

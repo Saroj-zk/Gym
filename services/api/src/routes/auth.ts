@@ -62,6 +62,7 @@ router.post('/admin/login', async (req, res) => {
 
     return res.json({
       ok: true,
+      token,
       user: {
         _id: user._id,
         userId: user.userId,
@@ -147,6 +148,7 @@ router.post('/member/login', async (req, res) => {
 
     return res.json({
       ok: true,
+      token,
       user: {
         _id: user._id,
         userId: user.userId,

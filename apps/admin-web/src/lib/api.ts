@@ -6,6 +6,15 @@ export const api = axios.create({
   withCredentials: true,                            // send/receive cookies
 });
 
+// Inject token if available (fallback for cross-site cookies)
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('admin_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // Redirect to admin-login on 401 for admin pages only
 api.interceptors.response.use(
   (res) => res,
