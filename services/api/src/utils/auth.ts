@@ -2,11 +2,11 @@
 import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction, CookieOptions } from 'express';
 
-export const ADMIN_COOKIE  = 'admin_auth';
+export const ADMIN_COOKIE = 'admin_auth';
 export const MEMBER_COOKIE = 'member_auth';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me';
-const IS_PROD = process.env.NODE_ENV === 'production';
+const IS_PROD = process.env.NODE_ENV === 'production' || !!process.env.RENDER || !!process.env.VERCEL;
 
 // Type-safe sameSite value for prod/non-prod
 const SAME_SITE: Exclude<CookieOptions['sameSite'], boolean | 'strict'> =

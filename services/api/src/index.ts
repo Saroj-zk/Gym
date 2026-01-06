@@ -74,9 +74,9 @@ async function bootstrap() {
       // 1) Exact match against explicit allow-list
       if (ALLOWED_LIST.some((a) => hostOf(a) === host || a === origin)) return true;
 
-      // 2) Allow Vercel preview URLs for the two projects (https only)
+      // 2) Allow ANY Vercel preview/deployment URL (https only)
       if (protocol === 'https:' && host.endsWith(VERCEL_SUFFIX)) {
-        if (VERCEL_WILDCARD_PREFIXES.some((p) => host.startsWith(p))) return true;
+        return true;
       }
 
       return false;
