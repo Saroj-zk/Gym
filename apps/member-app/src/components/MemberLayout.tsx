@@ -40,7 +40,7 @@ export function MemberLayout({ children, user, activeTab, onTabChange }: MemberL
                             GS
                         </div>
                         <div>
-                            <h2 className="font-bold text-slate-900 leading-none">GYMSTACK</h2>
+                            <h2 className="font-bold text-slate-900 leading-none">AG FITNESS</h2>
                             <span className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">Member Hub</span>
                         </div>
                     </div>
@@ -91,7 +91,7 @@ export function MemberLayout({ children, user, activeTab, onTabChange }: MemberL
                         <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white font-bold text-base">
                             GS
                         </div>
-                        <h1 className="font-bold text-slate-900">GYMSTACK</h1>
+                        <h1 className="font-bold text-slate-900">AG FITNESS</h1>
                     </div>
                     <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 text-slate-600">
                         {isMenuOpen ? <X size={24} /> : <Menu size={24} />}

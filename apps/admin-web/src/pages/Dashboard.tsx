@@ -2,8 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   TrendingUp, Users, Calendar, AlertCircle,
-  ArrowRight, Clock, DollarSign
+  ArrowRight, Clock, Plus, Activity,
+  PieChart as PieChartIcon
 } from 'lucide-react';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, PieChart, Pie, Cell
+} from 'recharts';
 import { api } from '../lib/api';
 import { clsx } from 'clsx';
 
@@ -14,7 +19,7 @@ type SignupUser = {
   lastName?: string;
   createdAt?: string;
 };
-type NewSignupsRes = { days: number; count: number; users: SignupUser[] };
+type NewSignupsRes = { users: SignupUser[] };
 
 type RenewalItem = {
   _id: string;
@@ -25,8 +30,20 @@ type RenewalItem = {
 };
 type RenewalsRes = { days: number; count: number; items: RenewalItem[] };
 
+type DashStats = {
+  revenueToday: number;
+  revenueThisMonth: number;
+  activeMembers: number;
+  totalMembers: number;
+  revenueSeries: { date: string; amount: number }[];
+  membershipDistribution: { name: string; count: number }[];
+};
+
+const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'];
+const CURRENCY_SYMBOL = '₹';
+
 export default function Dashboard() {
-  const [kpis, setKpis] = useState<any>(null);
+  const [stats, setStats] = useState<DashStats | null>(null);
   const [signups, setSignups] = useState<NewSignupsRes | null>(null);
   const [renewals, setRenewals] = useState<RenewalsRes | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,30 +53,24 @@ export default function Dashboard() {
     async function load() {
       try {
         setErr('');
-        // Parallel data fetching
-        const [rev, peaks, su, rn] = await Promise.all([
-          api.get('/reports/revenue/summary', { params: { days: 7 } }),
-          api.get('/reports/attendance/peaks'),
+        const [st, su, rn] = await Promise.all([
+          api.get('/reports/stats'),
           api.get('/reports/new-signups', { params: { days: 7, limit: 5 } }),
           api.get('/reports/upcoming-renewals', { params: { days: 7, limit: 8 } }),
         ]);
 
-        setKpis({ rev: rev.data, peaks: peaks.data });
+        setStats(st.data);
         setSignups(su.data);
         setRenewals(rn.data);
       } catch (e: any) {
         console.error(e);
-        setErr('Failed to load dashboard data');
+        setErr('Failed to load dashboard data. Ensure the API is running.');
       } finally {
         setLoading(false);
       }
     }
     load();
   }, []);
-
-  const revenue7d = kpis?.rev?.series?.reduce((a: number, b: any) => a + (Number(b?.value) || 0), 0) ?? 0;
-
-  const peakHour = kpis?.peaks?.byHour?.slice().sort((a: any, b: any) => (b?.count || 0) - (a?.count || 0))?.[0]?.hour ?? '-';
 
   if (loading) {
     return <div className="flex items-center justify-center h-96">
@@ -68,18 +79,18 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-12">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Dashboard Overview</h1>
-          <p className="text-slate-500 mt-1">Welcome back, here's what's happening at your gym today.</p>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Executive Dashboard</h1>
+          <p className="text-slate-500 mt-1">Real-time performance metrics and business intelligence.</p>
         </div>
         <div className="flex gap-2">
           <button className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
-            Export Report
+            Get Snapshot
           </button>
           <Link to="/users?new=true" className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-medium hover:bg-brand-700 shadow-lg shadow-brand-500/20 transition-all hover:scale-105 active:scale-95">
-            + New Member
+            <Plus size={18} /> New Member
           </Link>
         </div>
       </div>
@@ -91,42 +102,42 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* KPI Grid */}
+      {/* Primary KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
-          label="Revenue (7d)"
-          value={`$${revenue7d.toLocaleString()}`}
-          icon={DollarSign}
-          trend="+12% vs last week"
-          trendUp={true}
+          label="Revenue (Today)"
+          value={`${CURRENCY_SYMBOL}${stats?.revenueToday.toLocaleString()}`}
+          icon={TrendingUp}
           color="blue"
+          trend="+5.4% from avg"
+          trendUp={true}
         />
         <StatCard
-          label="Peak Hour"
-          value={`${peakHour}:00`}
-          sub="Based on check-ins"
-          icon={Clock}
+          label="Revenue (Month)"
+          value={`${CURRENCY_SYMBOL}${stats?.revenueThisMonth.toLocaleString()}`}
+          icon={Activity}
+          color="green"
+          sub="Current billing cycle"
+        />
+        <StatCard
+          label="Active Members"
+          value={stats?.activeMembers ?? 0}
+          icon={Users}
+          sub={`Out of ${stats?.totalMembers ?? 0} total`}
           color="purple"
         />
         <StatCard
-          label="New Signups"
-          value={signups?.count ?? 0}
-          sub={`Last ${signups?.days ?? 7} days`}
-          icon={Users}
-          color="green"
-        />
-        <StatCard
-          label="Renewals Due"
+          label="Renewals Pending"
           value={renewals?.count ?? 0}
-          sub={`Next ${renewals?.days ?? 7} days`}
+          sub="Next 7 days"
           icon={Calendar}
           color="orange"
           alert={renewals && renewals.count > 0}
         />
       </div>
 
+      {/* Lists Section (Recent & Renewals) - Moved Up */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Recent Signups */}
         <Card title="Recent Signups" action={<Link to="/users" className="text-xs font-semibold text-brand-600 hover:text-brand-700">View All</Link>}>
           {signups?.users?.length ? (
             <div className="divide-y divide-slate-100">
@@ -154,7 +165,6 @@ export default function Dashboard() {
           )}
         </Card>
 
-        {/* Upcoming Renewals */}
         <Card title="Upcoming Renewals" action={<Link to="/reports/renewals" className="text-xs font-semibold text-brand-600 hover:text-brand-700">View All</Link>}>
           {renewals?.items?.length ? (
             <div className="divide-y divide-slate-100">
@@ -202,6 +212,93 @@ export default function Dashboard() {
           )}
         </Card>
       </div>
+
+      {/* Visual Analytics */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <Card title={`Revenue Growth (30d) - ${CURRENCY_SYMBOL}`} className="lg:col-span-2">
+          <div className="h-[300px] w-full mt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={stats?.revenueSeries}>
+                <defs>
+                  <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis
+                  dataKey="date"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#94a3b8', fontSize: 12 }}
+                  minTickGap={30}
+                  tickFormatter={(val) => new Date(val).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#94a3b8', fontSize: 12 }}
+                  tickFormatter={(val) => `${CURRENCY_SYMBOL}${val}`}
+                />
+                <Tooltip
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  formatter={(val: any) => [`${CURRENCY_SYMBOL}${val ?? 0}`, 'Revenue']}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="amount"
+                  stroke="#3b82f6"
+                  strokeWidth={3}
+                  fillOpacity={1}
+                  fill="url(#colorRev)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        <Card title="Member Distribution">
+          <div className="h-[300px] w-full flex flex-col items-center justify-center">
+            {stats?.membershipDistribution.length ? (
+              <>
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie
+                      data={stats.membershipDistribution}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="count"
+                    >
+                      {stats.membershipDistribution.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="mt-4 space-y-2 w-full">
+                  {stats.membershipDistribution.map((item, index) => (
+                    <div key={item.name} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                        <span className="text-slate-600">{item.name}</span>
+                      </div>
+                      <span className="font-semibold text-slate-900">{item.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <EmptyState message="No active memberships to display." />
+            )}
+          </div>
+        </Card>
+      </div>
+
+
     </div>
   );
 }
@@ -237,9 +334,9 @@ function StatCard({ label, value, sub, icon: Icon, trend, trendUp, color = 'bran
   );
 }
 
-function Card({ children, title, action }: { children: React.ReactNode, title: string, action?: React.ReactNode }) {
+function Card({ children, title, action, className }: { children: React.ReactNode, title: string, action?: React.ReactNode, className?: string }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+    <div className={clsx("bg-white rounded-2xl border border-slate-100 shadow-sm p-6", className)}>
       <div className="flex items-center justify-between mb-6">
         <h2 className="font-bold text-lg text-slate-900">{title}</h2>
         {action}
@@ -251,7 +348,7 @@ function Card({ children, title, action }: { children: React.ReactNode, title: s
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="py-8 text-center">
+    <div className="py-8 text-center w-full">
       <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
         <Clock size={20} className="text-slate-400" />
       </div>
@@ -259,3 +356,4 @@ function EmptyState({ message }: { message: string }) {
     </div>
   );
 }
+

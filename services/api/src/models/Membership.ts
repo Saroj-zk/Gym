@@ -8,10 +8,11 @@ const MembershipSchema = new Schema({
   price: Number,
   discount: Number,
   reminders: {
-  sevenDay: { type: Boolean, default: false },
-},
-  paymentStatus: { type: String, enum: ['paid','pending','partial'], default: 'pending' },
-  status: { type: String, enum: ['active','expired','suspended','upgraded'], default: 'active' },
+    sevenDay: { type: Boolean, default: false },
+    threeDay: { type: Boolean, default: false },
+  },
+  paymentStatus: { type: String, enum: ['paid', 'pending', 'partial'], default: 'pending' },
+  status: { type: String, enum: ['active', 'expired', 'suspended', 'upgraded'], default: 'active' },
   notes: String,
 }, { timestamps: true });
 

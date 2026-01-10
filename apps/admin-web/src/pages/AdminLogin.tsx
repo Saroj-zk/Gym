@@ -163,7 +163,7 @@ export default function AdminLogin() {
 
         {/* Footer info */}
         <p className="mt-8 text-center text-gray-600 text-xs tracking-widest uppercase">
-          &copy; {new Date().getFullYear()} GYMSTACK ENTERPRISE SECURITY
+          &copy; {new Date().getFullYear()} AG FITNESS ENTERPRISE SECURITY
         </p>
       </div>
 

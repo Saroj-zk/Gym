@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
     Users, Package, CreditCard, CalendarCheck,
     Dumbbell, Pill, ShoppingCart, Trophy, Monitor,
-    LogOut, LayoutDashboard, Menu, X, Utensils, CalendarDays
+    LogOut, LayoutDashboard, Menu, X, Utensils, CalendarDays, MessageSquare
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -28,6 +28,7 @@ export function AppLayout({ children, onLogout, user }: AppLayoutProps) {
         { label: 'Diet Foods', path: '/diet-foods', icon: Utensils },
         { label: 'Orders', path: '/sales', icon: ShoppingCart },
         { label: 'Appointments', path: '/appointments', icon: CalendarDays },
+        { label: 'Messages', path: '/messages', icon: MessageSquare },
         { label: 'Leaderboard', path: '/leaderboard', icon: Trophy },
     ];
 
@@ -71,7 +72,7 @@ export function AppLayout({ children, onLogout, user }: AppLayoutProps) {
                     <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-brand-500/30">
                         G
                     </div>
-                    <span className="font-bold text-xl text-slate-900 tracking-tight">GymStack</span>
+                    <span className="font-bold text-xl text-slate-900 tracking-tight">AG Fitness</span>
                     <button className="ml-auto md:hidden" onClick={() => setIsMobileOpen(false)}>
                         <X size={20} className="text-slate-400" />
                     </button>
@@ -114,7 +115,7 @@ export function AppLayout({ children, onLogout, user }: AppLayoutProps) {
                     <button onClick={() => setIsMobileOpen(true)} className="p-2 -ml-2 text-slate-600">
                         <Menu size={24} />
                     </button>
-                    <span className="ml-3 font-semibold text-slate-900">GymStack</span>
+                    <span className="ml-3 font-semibold text-slate-900">AG Fitness</span>
                 </header>
 
                 {/* Scrollable Content Area */}

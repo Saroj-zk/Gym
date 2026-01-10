@@ -110,7 +110,7 @@ export default function MemberLogin() {
         </form>
 
         <div className="mt-8 text-center">
-          <p className="text-[10px] text-slate-300 uppercase tracking-widest font-bold">GymStack Systems v2.1</p>
+          <p className="text-[10px] text-slate-300 uppercase tracking-widest font-bold">AG Fitness Systems v2.1</p>
         </div>
       </div>
 

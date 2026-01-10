@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Plus, Download, Filter, Trash2, Eye, User as UserIcon, X, Calendar, Upload } from 'lucide-react';
+import { Search, Plus, Download, Filter, Trash2, Eye, User as UserIcon, X, Calendar, Upload, AlertTriangle } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { clsx } from 'clsx';
@@ -45,10 +45,6 @@ const emptyForm = {
   weight: '',
 };
 
-
-
-
-
 function computeEndDate(pack: Pack | undefined, start: string): string | null {
   if (!pack) return null;
   if (!start) return null;
@@ -88,6 +84,10 @@ export default function Users() {
   const [form, setForm] = useState({ ...emptyForm });
 
   const [memberships, setMemberships] = useState<Record<string, Membership | null>>({});
+
+  // Deletion State
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; user: User | null }>({ open: false, user: null });
+  const [deleting, setDeleting] = useState(false);
 
   async function load() {
     try {
@@ -181,14 +181,18 @@ export default function Users() {
     }
   }
 
-  async function removeUser(u: User) {
-    const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.userId;
-    if (!window.confirm(`Delete user ${name}? This permanently removes them.`)) return;
+  // NOTE: This uses the modal state instead of window.confirm
+  async function removeUser() {
+    if (!deleteConfirm.user) return;
+    setDeleting(true);
     try {
-      await api.delete(`/users/${u._id}`);
-      await load();
+      await api.delete(`/users/${deleteConfirm.user._id}`);
+      setDeleteConfirm({ open: false, user: null });
+      load();
     } catch (e: any) {
       alert(getErr(e, 'Failed to delete'));
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -389,7 +393,7 @@ export default function Users() {
                             <Eye size={18} />
                           </Link>
                           <button
-                            onClick={() => removeUser(u)}
+                            onClick={() => setDeleteConfirm({ open: true, user: u })}
                             className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             title="Delete User"
                           >
@@ -409,13 +413,10 @@ export default function Users() {
       {/* Add User Modal */}
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
           <div
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
             onClick={() => setOpen(false)}
           />
-
-          {/* Modal Content */}
           <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-6 md:p-8 animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
               <div>
@@ -559,18 +560,54 @@ export default function Users() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm.open && deleteConfirm.user && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+            onClick={() => setDeleteConfirm({ open: false, user: null })}
+          />
+          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle size={24} className="text-red-600" />
+            </div>
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-bold text-slate-900">Delete Member?</h2>
+              <p className="text-slate-500 text-sm mt-2">
+                Are you sure you want to delete <strong className="text-slate-900">{[deleteConfirm.user.firstName, deleteConfirm.user.lastName].join(' ')}</strong>?
+              </p>
+              <p className="text-red-600 text-xs mt-2 font-medium bg-red-50 py-2 px-3 rounded-lg">
+                This action is irreversible. All memberships, payments, and history will be wiped.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm({ open: false, user: null })}
+                className="flex-1 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={removeUser}
+                disabled={deleting}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-500/20 disabled:opacity-70 flex items-center justify-center gap-2"
+              >
+                {deleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={16} /> Delete Permanently
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-

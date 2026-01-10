@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import Supplement from '../models/Supplement.js';
+import User from '../models/User.js';
+import { sendSMS, getSMSTemplate } from '../utils/sms.js';
 
 const router = Router();
 
@@ -59,6 +61,35 @@ router.post('/', async (req, res, next) => {
   try {
     const body = createSupplementSchema.parse(req.body);
     const doc = await Supplement.create(body);
+
+    // Send reminders to users who haven't logged in for a while
+    try {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const inactiveUsers = await User.find({
+        role: 'member',
+        status: 'active',
+        $or: [
+          { lastLogin: { $lt: sevenDaysAgo } },
+          { lastLogin: { $exists: false } }
+        ],
+        mobile: { $exists: true, $ne: '' }
+      }).limit(50); // limit to avoid spamming/exhausting credits in one go
+
+      const msg = await getSMSTemplate('supplement', {
+        PRODUCT_NAME: doc.name
+      });
+
+      for (const user of inactiveUsers) {
+        if (user.mobile) {
+          sendSMS(user.mobile, msg).catch(console.error);
+        }
+      }
+    } catch (err) {
+      console.error('Supplement reminder error:', err);
+    }
+
     res.status(201).json(doc);
   } catch (e) { next(e); }
 });
@@ -128,8 +159,8 @@ router.get('/export/csv', async (req, res, next) => {
     const items = await Supplement.find(filter).sort({ createdAt: -1 }).lean();
 
     const headers = [
-      'Name','SKU','Category','Supplier','Purchase Price','Selling Price',
-      'Stock Qty','Unit','Active','Image URL','Created'
+      'Name', 'SKU', 'Category', 'Supplier', 'Purchase Price', 'Selling Price',
+      'Stock Qty', 'Unit', 'Active', 'Image URL', 'Created'
     ];
     const lines = [headers.join(',')];
 
@@ -146,12 +177,12 @@ router.get('/export/csv', async (req, res, next) => {
         it.isActive ? 'true' : 'false',
         it.imageUrl ?? '',
         it.createdAt ? new Date(it.createdAt).toISOString() : ''
-      ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(',');
+      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
       lines.push(row);
     }
 
-    res.setHeader('Content-Type','text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition','attachment; filename="supplements.csv"');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="supplements.csv"');
     res.send(lines.join('\n'));
   } catch (e) { next(e); }
 });

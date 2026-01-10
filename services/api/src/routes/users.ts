@@ -5,14 +5,20 @@ import { createUserSchema } from '../utils/validators.js';
 import User from '../models/User.js';
 import Membership from '../models/Membership.js';
 import Pack from '../models/Pack.js';
-import { sendSMS } from '../utils/sms.js';
+import Attendance from '../models/Attendance.js';
+import Appointment from '../models/Appointment.js';
+import CalorieLog from '../models/CalorieLog.js';
+import Payment from '../models/Payment.js';
+import WorkoutPlan from '../models/WorkoutPlan.js';
+import { sendSMS, getSMSTemplate } from '../utils/sms.js';
+import { readAuth, requireRole, ADMIN_COOKIE } from '../utils/auth.js';
 
 const router = Router();
+router.use(readAuth(ADMIN_COOKIE));
 
 /**
  * GET /users
  */
-import Attendance from '../models/Attendance.js';
 
 /**
  * GET /users/leaderboard
@@ -79,7 +85,7 @@ router.get('/', async (req, res, next) => {
  * POST /users
  * Creates user; if packId provided, creates membership and sends activation SMS.
  */
-router.post('/', async (req, res, next) => {
+router.post('/', requireRole('admin'), async (req, res, next) => {
   try {
     const body = createUserSchema.parse(req.body);
 
@@ -117,14 +123,18 @@ router.post('/', async (req, res, next) => {
 
         // Activation SMS
         if (user.mobile) {
-          const gym = process.env.GYM_NAME || 'Your Gym';
-          const startStr = start.toLocaleDateString();
-          const endStr = end ? end.toLocaleDateString() : '';
-          const bodyText =
-            pack.durationType === 'sessions'
-              ? `Welcome to ${gym}, ${user.firstName || ''}! Your ${pack.name} pack is active. Member ID: ${user.userId}.`
-              : `Welcome to ${gym}, ${user.firstName || ''}! Your ${pack.name} pack is active from ${startStr} to ${endStr}. Member ID: ${user.userId}.`;
-          await sendSMS(user.mobile, bodyText);
+          console.log(`[Users] Triggering Welcome SMS for ${user.firstName} (${user.mobile})`)
+          const msg = await getSMSTemplate('welcome', {
+            USER_NAME: user.firstName || 'Member',
+            PACK_NAME: pack.name || 'Membership',
+            START_DATE: start.toLocaleDateString() || '',
+            END_DATE: end ? end.toLocaleDateString() : '',
+            USER_ID: user.userId || ''
+          });
+          const res = await sendSMS(user.mobile, msg);
+          console.log(`[Users] SMS Result for ${user.userId}:`, res);
+        } else {
+          console.log(`[Users] Skipping SMS: No mobile for ${user.userId}`)
         }
       }
     }
@@ -139,7 +149,7 @@ router.post('/', async (req, res, next) => {
  * POST /users/import
  * Expects JSON { csvData: string }
  */
-router.post('/import', async (req, res, next) => {
+router.post('/import', requireRole('admin'), async (req, res, next) => {
   try {
     const { csvData } = req.body;
     if (!csvData) throw new Error('No CSV data provided');
@@ -193,7 +203,7 @@ router.post('/import', async (req, res, next) => {
  * GET /users/export/csv
  * (Keep this BEFORE '/:id' so it isn't shadowed.)
  */
-router.get('/export/csv', async (req, res, next) => {
+router.get('/export/csv', requireRole('admin'), async (req, res, next) => {
   try {
     const { q, status } = req.query as any;
     const filter: any = {};
@@ -240,7 +250,7 @@ router.get('/:id', async (req, res) => {
 /**
  * PATCH /users/:id
  */
-router.patch('/:id', async (req, res, next) => {
+router.patch('/:id', requireRole('admin'), async (req, res, next) => {
   try {
     const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!user) return res.status(404).json({ error: 'Not found' });
@@ -253,11 +263,43 @@ router.patch('/:id', async (req, res, next) => {
 /**
  * DELETE /users/:id
  */
-router.delete('/:id', async (req, res) => {
-  const u = await User.findById(req.params.id);
-  if (!u) return res.status(404).json({ error: 'User not found' });
-  await User.findByIdAndDelete(req.params.id);
-  res.json({ ok: true });
+router.delete('/:id', requireRole('admin'), async (req, res, next) => {
+  try {
+    console.log(`[Users] Attempting delete for param: ${req.params.id}`);
+    let user;
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+      user = await User.findById(req.params.id);
+    }
+    if (!user) {
+      user = await User.findOne({ userId: req.params.id });
+    }
+
+    if (!user) {
+      console.warn(`[Users] Delete failed: User not found for ${req.params.id}`);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const userObjectId = user._id;
+    console.log(`[Users] Found user ${user.firstName} (${userObjectId}). Deleting...`);
+
+    // 1. Delete user record
+    await User.findByIdAndDelete(userObjectId);
+
+    // 2. Cascade delete related data
+    await Promise.all([
+      Membership.deleteMany({ userId: userObjectId }),
+      Attendance.deleteMany({ userId: userObjectId }),
+      Appointment.deleteMany({ userId: userObjectId }),
+      CalorieLog.deleteMany({ userId: userObjectId }),
+      Payment.deleteMany({ userId: userObjectId }),
+      WorkoutPlan.deleteMany({ userId: userObjectId }),
+    ]);
+
+    console.log(`[Users] Delete successful for ${userObjectId}`);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[Users] Delete error:', e);
+    next(e);
+  }
 });
 
 export default router;
